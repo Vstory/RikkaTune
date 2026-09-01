@@ -2,6 +2,9 @@
 .super Lio/github/libxposed/api/XposedModule;
 .field private mAppClassLoader:Ljava/lang/ClassLoader;
 .field public static sDebug:Lcom/vstory/hook/rikkahub/MainHook;
+.field private static sHookOk:I
+.field private static sHookFail:I
+.field private static sHookDetail:Ljava/lang/StringBuilder;
 .method public constructor <init>()V
     .registers 1
     invoke-direct {p0}, Lio/github/libxposed/api/XposedModule;-><init>()V
@@ -76,42 +79,34 @@
     invoke-interface {v4, v5}, Lio/github/libxposed/api/XposedInterface$HookBuilder;->setExceptionMode(Lio/github/libxposed/api/XposedInterface$ExceptionMode;)Lio/github/libxposed/api/XposedInterface$HookBuilder;
     move-result-object v4
     invoke-interface {v4, p4}, Lio/github/libxposed/api/XposedInterface$HookBuilder;->intercept(Lio/github/libxposed/api/XposedInterface$Hooker;)Lio/github/libxposed/api/XposedInterface$HookHandle;
-    const/4 v0, 0x4
-    const-string v1, "RikkaTune"
-    new-instance v2, Ljava/lang/StringBuilder;
-    invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
-    const-string v3, "hook OK: "
-    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    invoke-virtual {v2, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    const-string v3, "#"
-    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    invoke-virtual {v2, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    invoke-virtual {v2}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-    move-result-object v2
-    invoke-virtual {p0, v0, v1, v2}, Lio/github/libxposed/api/XposedInterfaceWrapper;->log(ILjava/lang/String;Ljava/lang/String;)V
+    sget v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookOk:I
+    add-int/lit8 v0, v0, 0x1
+    sput v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookOk:I
+    sget-object v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookDetail:Ljava/lang/StringBuilder;
+    const-string v1, "[OK] "
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v0, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    const-string v1, "#"
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v0, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    const-string v1, "\n"
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
     goto :end_hook
     :try_end
     .catch Ljava/lang/Throwable; {:try_start .. :try_end} :catch_log
     :catch_log
-    move-exception v0
-    const/4 v1, 0x6
-    const-string v2, "RikkaTune"
-    new-instance v3, Ljava/lang/StringBuilder;
-    invoke-direct {v3}, Ljava/lang/StringBuilder;-><init>()V
-    const-string v4, "hook FAILED "
-    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    invoke-virtual {v3, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    const-string v4, "#"
-    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    invoke-virtual {v3, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    const-string v4, " : "
-    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    invoke-virtual {v0}, Ljava/lang/Throwable;->toString()Ljava/lang/String;
-    move-result-object v4
-    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    invoke-virtual {v3}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-    move-result-object v3
-    invoke-virtual {p0, v1, v2, v3}, Lio/github/libxposed/api/XposedInterfaceWrapper;->log(ILjava/lang/String;Ljava/lang/String;)V
+    sget v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookFail:I
+    add-int/lit8 v0, v0, 0x1
+    sput v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookFail:I
+    sget-object v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookDetail:Ljava/lang/StringBuilder;
+    const-string v1, "["
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v0, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    const-string v1, "#"
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v0, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    const-string v1, "]\n"
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
     :end_hook
     return-void
 .end method
@@ -174,47 +169,45 @@
     invoke-interface {v4, v5}, Lio/github/libxposed/api/XposedInterface$HookBuilder;->setExceptionMode(Lio/github/libxposed/api/XposedInterface$ExceptionMode;)Lio/github/libxposed/api/XposedInterface$HookBuilder;
     move-result-object v4
     invoke-interface {v4, p5}, Lio/github/libxposed/api/XposedInterface$HookBuilder;->intercept(Lio/github/libxposed/api/XposedInterface$Hooker;)Lio/github/libxposed/api/XposedInterface$HookHandle;
-    const/4 v0, 0x4
-    const-string v1, "RikkaTune"
-    new-instance v2, Ljava/lang/StringBuilder;
-    invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
-    const-string v3, "hook OK: "
-    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    invoke-virtual {v2, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    const-string v3, "#"
-    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    invoke-virtual {v2, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    invoke-virtual {v2}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-    move-result-object v2
-    invoke-virtual {p0, v0, v1, v2}, Lio/github/libxposed/api/XposedInterfaceWrapper;->log(ILjava/lang/String;Ljava/lang/String;)V
+    sget v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookOk:I
+    add-int/lit8 v0, v0, 0x1
+    sput v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookOk:I
+    sget-object v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookDetail:Ljava/lang/StringBuilder;
+    const-string v1, "[OK] "
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v0, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    const-string v1, "#"
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v0, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    const-string v1, "\n"
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
     goto :end_hook
     :try_end
     .catch Ljava/lang/Throwable; {:try_start .. :try_end} :catch_log
     :catch_log
-    move-exception v0
-    const/4 v1, 0x6
-    const-string v2, "RikkaTune"
-    new-instance v3, Ljava/lang/StringBuilder;
-    invoke-direct {v3}, Ljava/lang/StringBuilder;-><init>()V
-    const-string v4, "hook FAILED "
-    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    invoke-virtual {v3, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    const-string v4, "#"
-    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    invoke-virtual {v3, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    const-string v4, " : "
-    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    invoke-virtual {v0}, Ljava/lang/Throwable;->toString()Ljava/lang/String;
-    move-result-object v4
-    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
-    invoke-virtual {v3}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
-    move-result-object v3
-    invoke-virtual {p0, v1, v2, v3}, Lio/github/libxposed/api/XposedInterfaceWrapper;->log(ILjava/lang/String;Ljava/lang/String;)V
+    sget v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookFail:I
+    add-int/lit8 v0, v0, 0x1
+    sput v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookFail:I
+    sget-object v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookDetail:Ljava/lang/StringBuilder;
+    const-string v1, "["
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v0, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    const-string v1, "#"
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v0, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    const-string v1, "]\n"
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
     :end_hook
     return-void
 .end method
 .method private installHooks(Ljava/lang/ClassLoader;)V
     .registers 12
+    new-instance v0, Ljava/lang/StringBuilder;
+    invoke-direct {v0}, Ljava/lang/StringBuilder;-><init>()V
+    sput-object v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookDetail:Ljava/lang/StringBuilder;
+    const/4 v0, 0x0
+    sput v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookOk:I
+    sput v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookFail:I
     new-instance v1, Lcom/vstory/hook/rikkahub/MainHook$PanguHooker;
     invoke-direct {v1}, Lcom/vstory/hook/rikkahub/MainHook$PanguHooker;-><init>()V
     const-string v4, "android.content.res.Resources"
@@ -233,6 +226,31 @@
     const-string v4, "androidx.compose.ui.hapticfeedback.PlatformHapticFeedback"
     const-string v5, "performHapticFeedback-CdsT49E"
     invoke-direct {p0, p1, v4, v5, v1}, Lcom/vstory/hook/rikkahub/MainHook;->hookMethodInt(Ljava/lang/ClassLoader;Ljava/lang/String;Ljava/lang/String;Lio/github/libxposed/api/XposedInterface$Hooker;)V
+    const/4 v0, 0x4
+    const-string v1, "RikkaTune"
+    new-instance v2, Ljava/lang/StringBuilder;
+    invoke-direct {v2}, Ljava/lang/StringBuilder;-><init>()V
+    const-string v3, "installHooks done: "
+    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    sget v3, Lcom/vstory/hook/rikkahub/MainHook;->sHookOk:I
+    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+    const-string v3, " OK / "
+    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    sget v3, Lcom/vstory/hook/rikkahub/MainHook;->sHookFail:I
+    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(I)Ljava/lang/StringBuilder;
+    const-string v3, " FAIL / \n"
+    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    sget-object v3, Lcom/vstory/hook/rikkahub/MainHook;->sHookDetail:Ljava/lang/StringBuilder;
+    invoke-virtual {v2, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/Object;)Ljava/lang/StringBuilder;
+    invoke-virtual {v2}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    move-result-object v2
+    invoke-virtual {p0, v0, v1, v2}, Lio/github/libxposed/api/XposedInterfaceWrapper;->log(ILjava/lang/String;Ljava/lang/String;)V
+    const/4 v0, 0x0
+    sput v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookOk:I
+    sput v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookFail:I
+    sget-object v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookDetail:Ljava/lang/StringBuilder;
+    const/4 v1, 0x0
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->setLength(I)V
     return-void
 .end method
 .method public logD(Ljava/lang/String;Ljava/lang/String;)V
@@ -278,10 +296,6 @@
     move-result-object v3
     invoke-virtual {p0, v1, v2, v3}, Lio/github/libxposed/api/XposedInterfaceWrapper;->log(ILjava/lang/String;Ljava/lang/String;)V
     invoke-direct {p0, v0}, Lcom/vstory/hook/rikkahub/MainHook;->installHooks(Ljava/lang/ClassLoader;)V
-    const/4 v1, 0x4
-    const-string v2, "RikkaTune"
-    const-string v3, "installHooks done (check [hook] logs)"
-    invoke-virtual {p0, v1, v2, v3}, Lio/github/libxposed/api/XposedInterfaceWrapper;->log(ILjava/lang/String;Ljava/lang/String;)V
     return-void
 .end method
 .method public onHotReloading(Lio/github/libxposed/api/XposedModuleInterface$HotReloadingParam;)Z
