@@ -17,9 +17,9 @@
 #   - 默认 debug 签名 (CN=Android Debug): 任何人 clone 后无需证书即可构建安装
 #   - 自定义 keystore: 发布者用自己的私钥签名, 私钥永不公开
 #
-# 产物命名 (Debug 版标识):
-#   - 默认所有构建 = Debug 版: 产物名自动追加 _Debug (如 RikkaHub_1.0.0(13)_Debug.apk)
-#   - 正式版: 把业务代码里 Debug.d(...) 调用注释掉 → 自动识别为正式版 → 不追加 _Debug
+# 产物命名 (release/debug 标识):
+#   - 含未注释 Debug.d 调用 → Debug 版 → 产物名追加 _debug (如 RikkaTune_1.0.0(15)_debug.apk)
+#   - 注释/移除所有 Debug.d 调用 → 正式版 → 产物名追加 _release (如 RikkaTune_1.0.0(15)_release.apk)
 #   - 判断依据: 扫 src/smali/**/*.smali 是否有未注释的 invoke-static .*Debug;->d 调用
 # ============================================================
 set -e
@@ -77,17 +77,18 @@ case "$BUMP" in
 esac
 printf 'versionName=%s\nversionCode=%s\n' "$VERSION_NAME" "$VERSION_CODE" > "$VERSION_FILE"
 
-# ---------- Debug 版标识 ----------
-# 规则: 默认所有构建 = Debug 版, 产物名自动追加 _Debug; 仅正式版(调用点已注释)不加
-# 判断: 扫 src/smali/**/*.smali 里是否有【未注释的】 invoke-static .*Debug;->d 调用
-#   - 存在(非注释行首是 invoke-static) → Debug 版 → 追加 _Debug
-#   - 全部注释/移除 → 正式版 → 不加
+# ---------- 产物命名标识 (release/debug) ----------
+# 规则: 扫 src/smali/**/*.smali 里是否有【未注释的】 invoke-static .*Debug;->d 调用
+#   - 存在(非注释行首是 invoke-static) → Debug 版 → 产物名追加 _debug
+#   - 全部注释/移除 → 正式版 → 产物名追加 _release
+# 产物名: release/${MODULE_NAME}_${VERSION_NAME}(${VERSION_CODE})_${release|debug}.apk
 DEBUG_SUFFIX=""
 if grep -rqE '^[[:space:]]*invoke-static[[:space:]]*\{.*Debug;->d' src/smali/ 2>/dev/null; then
-    DEBUG_SUFFIX="_Debug"
-    echo "检测: 含调试代码(Debug.d 调用仍在) → 追加 _Debug 标识"
+    DEBUG_SUFFIX="_debug"
+    echo "检测: 含调试代码(Debug.d 调用仍在) → Debug 版 → 追加 _debug"
 else
-    echo "检测: 正式版(Debug.d 调用已注释/移除) → 不追加 Debug 标识"
+    DEBUG_SUFFIX="_release"
+    echo "检测: 正式版(Debug.d 调用已注释/移除) → 正式版 → 追加 _release"
 fi
 
 OUT="release/${MODULE_NAME}_${VERSION_NAME}(${VERSION_CODE})${DEBUG_SUFFIX}.apk"
