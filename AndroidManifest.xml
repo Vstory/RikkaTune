@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  api102 模块 Manifest 模板
+  注意:
+    - minSdk 必须 ≥ 26 (api102 要求)
+    - 无需传统 xposed meta-data (xposedmodule/xposeddescription/xposedscope)
+    - versionCode/versionName 会被 build.sh 自动写回
+    - 模块标识/作用域 在 META-INF/xposed/ 声明, 不在这里
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    android:versionCode="14"
+    android:versionName="1.0.0"
+    package="com.vstory.hook.rikkahub">
+    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="37" />
+    <application
+        android:label="RikkaTune"
+        android:description="@string/module_description"
+        android:allowBackup="false">
+    </application>
+</manifest>
