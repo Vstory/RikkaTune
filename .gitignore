@@ -8,3 +8,7 @@ rikkahub源码/
 
 # ==== 开发记录 / 日志箱（项目本地开发资料，不进公开仓库）====
 dev-project/
+
+# ==== 发布工具脚本（去注释/验证，仅本地发布流程用，不进公开仓库）====
+strip_comments.sh
+verify_strip.sh
