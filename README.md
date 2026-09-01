@@ -19,4 +19,8 @@ RikkaHub 增强模块（LSPosed / Xposed）。
 
 基于 [RikkaHub](https://github.com/rikkahub/rikkahub)（Android 开源 AI 聊天客户端）。
 
+## 许可证
+
+本项目采用 **GNU AGPL-3.0** 许可证，与 RikkaHub 保持一致。详见 [LICENSE](LICENSE)。
+
 > 更多功能增强与界面调整正在开发中。
