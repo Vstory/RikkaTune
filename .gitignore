@@ -1,6 +1,8 @@
 build/
-release/
+dev-project/releases/
 *.idsig
+
+dev-project/tokens/
 
 rikkahub源码/
 
