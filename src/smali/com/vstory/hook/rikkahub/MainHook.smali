@@ -25,7 +25,8 @@
 # ⚠️ 调试日志入口: 供 Debug.smali 拿当前 MainHook 实例来调框架 log()（D 级框架日志）
 #   - onModuleLoaded 里初始化为 this; 热重载后 sDebug 复位为 null, 需在 restoreModuleState 恢复
 #   - 静态引用: 让独立 Debug 类(无 MainHook 实例)也能调框架 log(); 不影响 logcat
-.field private static sDebug:Lcom/vstory/hook/rikkahub/MainHook;
+#   - ⚠️ 必须 public: Debug 类要读它(跨类), private 会抛 IllegalAccessError
+.field public static sDebug:Lcom/vstory/hook/rikkahub/MainHook;
 
 
 # direct methods
