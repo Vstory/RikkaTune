@@ -1,5 +1,6 @@
 # ==== 构建产物 / 中间文件（不进仓库）====
 build/
+.gradle/
 dev-project/releases/
 *.idsig
 
