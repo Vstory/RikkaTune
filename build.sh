@@ -1,6 +1,6 @@
 #!/bin/bash
-# TEMPLATE_VERSION=1.2.1    # 模板版本号(项目脚本对比用, 勿删)
-# SCRIPT_VERSION=1.2.1        # 脚本自身版本号(内容改动时 bump; 项目定制后可更高, 防覆盖)
+# TEMPLATE_VERSION=1.2.2    # 模板版本号(项目脚本对比用, 勿删)
+# SCRIPT_VERSION=1.2.2        # 脚本自身版本号(内容改动时 bump; 项目定制后可更高, 防覆盖)
 # ============================================================
 # libxposed API 102 模块通用构建脚本
 # 来源: 懒饭模块 + 钱迹模块 实战沉淀
@@ -37,6 +37,8 @@ cd "$SCRIPT_DIR"
 MODULE_NAME="RikkaTune"
 # 📌 新项目修改点 2: 包名（必须与 smali 目录/AndroidManifest 一致）— 项目定制段
 PACKAGE_NAME="com.vstory.hook.rikkahub"
+# 📌 新项目修改点 1: 模块名（输出 APK 文件名）— 项目定制段, 模板更新时自动保留
+# 📌 新项目修改点 2: 包名（必须与 smali 目录/AndroidManifest 一致）— 项目定制段
 # 📌 新项目修改点 1: 模块名（输出 APK 文件名）— 项目定制段, 模板更新时自动保留
 # 📌 新项目修改点 2: 包名（必须与 smali 目录/AndroidManifest 一致）— 项目定制段
 # PROJECT-CUSTOM-END
@@ -275,8 +277,10 @@ fi
 if [ "$RELEASE_MODE" -eq 1 ]; then
     echo ""
     echo "[release] 恢复调试块 (toggle on)..."
+    # toggle on 内部已自动编译验证: 失败会回滚 off 并退出非零 → build.sh set -e 拦截
     bash dev-project/toggle_debug.sh on
     echo "[release] 恢复后 Debug.d 调用: $(grep -rE '^[[:space:]]*invoke-static[[:space:]]*\{.*Debug;->d' src/smali/ 2>/dev/null | wc -l) (应>0)"
+    echo "[release] 源码恢复验证: toggle on 已通过 smali 编译验证（源码可编译）"
 fi
 
 echo ""

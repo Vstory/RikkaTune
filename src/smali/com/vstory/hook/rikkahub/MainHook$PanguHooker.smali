@@ -115,54 +115,51 @@
 
     move-result-object v1
 
+    #ifdef DEBUG
     # ============================================================
     # 盘古拦截值 debug 日志 (equals 判断 + 拼串 + Debug.d)
-    #   ⚠️ 正式版: 整块注释掉(零日志开销), 只 return result
-    #   调试版: 保留整块, 每次盘古改文案都打 "PANGU: [orig] -> [result]"
+    #   ⚠️ 规范调试块: toggle_debug.sh off 整块注释 / on 恢复, 零遗漏
+    #   每次盘古改文案都打 "PANGU: [orig] -> [result]"
     # ============================================================
     # if (!result.equals(orig)) Log.d(TAG, "PANGU: [orig] -> [result]")
-    # invoke-virtual {v1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    invoke-virtual {v1, v0}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
 
-    # move-result v2
+    move-result v2
 
-    # if-nez v2, :skip_log
+    if-nez v2, :skip_log
 
-    # # Log.i("RikkaTune", "PANGU: " + orig + " -> " + result)
-    # const-string v2, "RikkaTune"
+    # Log.i("RikkaTune", "PANGU: " + orig + " -> " + result)
+    const-string v2, "RikkaTune"
 
-    # new-instance v3, Ljava/lang/StringBuilder;
+    new-instance v3, Ljava/lang/StringBuilder;
 
-    # invoke-direct {v3}, Ljava/lang/StringBuilder;-><init>()V
+    invoke-direct {v3}, Ljava/lang/StringBuilder;-><init>()V
 
-    # const-string v4, "PANGU: ["
+    const-string v4, "PANGU: ["
 
-    # invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    # invoke-virtual {v3, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v3, v0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    # const-string v4, "] -> ["
+    const-string v4, "] -> ["
 
-    # invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    # invoke-virtual {v3, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v3, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    # const-string v4, "]"
+    const-string v4, "]"
 
-    # invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v3, v4}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
 
-    # invoke-virtual {v3}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+    invoke-virtual {v3}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
 
-    # move-result-object v3
+    move-result-object v3
 
-    # # ⚠️ 调试值日志(拦截结果) — 双通道: LSPosed 框架 + logcat 都可见
-    # invoke-static {v2, v3}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
+    # ⚠️ 调试值日志(拦截结果) — 双通道: LSPosed 框架 + logcat 都可见
+    invoke-static {v2, v3}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
 
-    # ============================================================
-    # ⚠️ 正式版: 上面整块"盘古拦截值日志"(equals 判断 + 拼串 + Debug.d) 已全部注释
-    #   调试版: 取消注释整块即可恢复(含 :skip_log 标签与 if-nez 跳转,
-    #           但恢复时需同步把下面的 :skip_log 标签加回来)
-    #   正式版: 只 return result, 零日志开销, 无 :skip_log 死标签
-    # ============================================================
+    #endif
+    :skip_log
     return-object v1
 
     :ret_orig
