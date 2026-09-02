@@ -50,14 +50,11 @@ public class RikkaTuneActivity extends Activity {
         buildUi();
         // 注册到 Application（binder 到达时转发给我）
         RikkaTuneApp.sUi = this;
-        // 读 Application 静态 prefs（进程级，Activity 重建直接复用）
-        SharedPreferences sp = Prefs.current();
-        if (sp != null) {
-            mRemotePrefs = sp;
-            refreshSwitches();
-            showStatus("已连接框架：设置即时生效", "#2E7D32");
+        // 只有 onServiceBind 真正到达后 mRemotePrefs 才有效
+        // 如果 Application 已经收到过 binder（Activity 重建），直接复用
+        if (RikkaTuneApp.sService != null) {
+            onServiceBind(RikkaTuneApp.sService);
         } else {
-            // Application 还没收到 binder（进程首次/框架未到）→ 本地 fallback 已就绪
             showStatus("正在连接 LSPosed 框架…", "#FF9800");
         }
     }
@@ -176,6 +173,10 @@ public class RikkaTuneActivity extends Activity {
         (buttonView, isChecked) -> {
             if (mRefreshing) return;
             String key = (String) buttonView.getTag();
+            if (mRemotePrefs == null) {
+                Debug.d("RikkaTuneUI", "开关 " + key + " 未连接框架，忽略");
+                return;
+            }
             Debug.d("RikkaTuneUI", "开关 " + key + " -> " + isChecked + " 已写入");
             Prefs.putBoolean(key, isChecked);
         };
