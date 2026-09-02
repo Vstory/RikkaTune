@@ -1,3 +1,5 @@
+package com.vstory.hook.rikkahub;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 

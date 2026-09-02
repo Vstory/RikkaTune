@@ -1,3 +1,5 @@
+package com.vstory.hook.rikkahub;
+
 import static android.util.Log.DEBUG;
 import static android.util.Log.INFO;
 

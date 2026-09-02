@@ -1,3 +1,5 @@
+package com.vstory.hook.rikkahub;
+
 import android.app.Activity;
 import android.content.SharedPreferences;
 import android.graphics.Color;

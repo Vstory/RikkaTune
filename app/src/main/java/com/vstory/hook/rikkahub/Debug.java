@@ -1,3 +1,5 @@
+package com.vstory.hook.rikkahub;
+
 /**
  * D 级调试日志：双通道（框架日志 + logcat）。
  * <p>

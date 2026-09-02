@@ -1,3 +1,5 @@
+package com.vstory.hook.rikkahub;
+
 /**
  * 框架日志桥接口（UI 进程安全）。
  * <p>
