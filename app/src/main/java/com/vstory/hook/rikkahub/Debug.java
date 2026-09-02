@@ -11,13 +11,22 @@ public class Debug {
     /** hook 进程由 MainHook 注入，UI 进程为 null */
     public static HookLogger sLogger;
 
+    // #ifdef DEBUG
+    // D 级调试日志门控: release 下 BuildConfig.DEBUG=false → javac 常量折叠,
+    // 整个 if 块不生成字节码, d() 方法体为空 → 正式版零日志副作用。
+    // (toggle_debug.sh 只管注释/恢复本块, 不影响调用点)
+    // #endif
     public static void d(String tag, String msg) {
-        if (sLogger != null) sLogger.logD(tag, msg);
-        android.util.Log.i(tag, msg);  // 改用 Log.i 避免被 Android 16 过滤
+        if (BuildConfig.DEBUG) {
+            if (sLogger != null) sLogger.logD(tag, msg);
+            android.util.Log.i(tag, msg);  // 改用 Log.i 避免被 Android 16 过滤
+        }
     }
 
     public static void d(String tag, String msg, Throwable tr) {
-        if (sLogger != null) sLogger.logD(tag, msg, tr);
-        android.util.Log.i(tag, msg);  // 改用 Log.i 避免被 Android 16 过滤
+        if (BuildConfig.DEBUG) {
+            if (sLogger != null) sLogger.logD(tag, msg, tr);
+            android.util.Log.i(tag, msg);  // 改用 Log.i 避免被 Android 16 过滤
+        }
     }
 }
