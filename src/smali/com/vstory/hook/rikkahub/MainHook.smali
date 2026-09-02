@@ -5,6 +5,7 @@
 .field private static sHookOk:I
 .field private static sHookFail:I
 .field private static sHookDetail:Ljava/lang/StringBuilder;
+.field public static sCompressInProgress:Z
 .method public constructor <init>()V
     .registers 1
     invoke-direct {p0}, Lio/github/libxposed/api/XposedModule;-><init>()V
@@ -200,6 +201,69 @@
     :end_hook
     return-void
 .end method
+.method private hookMethodByName(Ljava/lang/ClassLoader;Ljava/lang/String;Ljava/lang/String;Lio/github/libxposed/api/XposedInterface$Hooker;)V
+    .registers 15
+    move-object v6, p2
+    move-object v7, p3
+    :try_start
+    const/4 v0, 0x0
+    invoke-static {v6, v0, p1}, Ljava/lang/Class;->forName(Ljava/lang/String;ZLjava/lang/ClassLoader;)Ljava/lang/Class;
+    move-result-object v4
+    invoke-virtual {v4}, Ljava/lang/Class;->getDeclaredMethods()[Ljava/lang/reflect/Method;
+    move-result-object v5
+    array-length v2, v5
+    const/4 v3, 0x0
+    :loop
+    if-ge v3, v2, :not_found
+    aget-object v8, v5, v3
+    invoke-virtual {v8}, Ljava/lang/reflect/Method;->getName()Ljava/lang/String;
+    move-result-object v9
+    invoke-virtual {v9, v7}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result v9
+    if-eqz v9, :next
+    invoke-virtual {p0, v8}, Lio/github/libxposed/api/XposedInterfaceWrapper;->hook(Ljava/lang/reflect/Executable;)Lio/github/libxposed/api/XposedInterface$HookBuilder;
+    move-result-object v8
+    sget-object v9, Lio/github/libxposed/api/XposedInterface$ExceptionMode;->PROTECTIVE:Lio/github/libxposed/api/XposedInterface$ExceptionMode;
+    invoke-interface {v8, v9}, Lio/github/libxposed/api/XposedInterface$HookBuilder;->setExceptionMode(Lio/github/libxposed/api/XposedInterface$ExceptionMode;)Lio/github/libxposed/api/XposedInterface$HookBuilder;
+    move-result-object v8
+    invoke-interface {v8, p4}, Lio/github/libxposed/api/XposedInterface$HookBuilder;->intercept(Lio/github/libxposed/api/XposedInterface$Hooker;)Lio/github/libxposed/api/XposedInterface$HookHandle;
+    sget v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookOk:I
+    add-int/lit8 v0, v0, 0x1
+    sput v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookOk:I
+    sget-object v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookDetail:Ljava/lang/StringBuilder;
+    const-string v1, "[OK] "
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v0, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    const-string v1, "#"
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v0, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    const-string v1, "\n"
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    goto :end_hook
+    :next
+    add-int/lit8 v3, v3, 0x1
+    goto :loop
+    :not_found
+    const/4 v0, 0x0
+    throw v0
+    :try_end
+    .catch Ljava/lang/Throwable; {:try_start .. :try_end} :catch_log
+    :catch_log
+    sget v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookFail:I
+    add-int/lit8 v0, v0, 0x1
+    sput v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookFail:I
+    sget-object v0, Lcom/vstory/hook/rikkahub/MainHook;->sHookDetail:Ljava/lang/StringBuilder;
+    const-string v1, "["
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v0, v6}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    const-string v1, "#"
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    invoke-virtual {v0, v7}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    const-string v1, "]\n"
+    invoke-virtual {v0, v1}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+    :end_hook
+    return-void
+.end method
 .method private installHooks(Ljava/lang/ClassLoader;)V
     .registers 12
     new-instance v0, Ljava/lang/StringBuilder;
@@ -226,6 +290,24 @@
     const-string v4, "androidx.compose.ui.hapticfeedback.PlatformHapticFeedback"
     const-string v5, "performHapticFeedback-CdsT49E"
     invoke-direct {p0, p1, v4, v5, v1}, Lcom/vstory/hook/rikkahub/MainHook;->hookMethodInt(Ljava/lang/ClassLoader;Ljava/lang/String;Ljava/lang/String;Lio/github/libxposed/api/XposedInterface$Hooker;)V
+    new-instance v1, Lcom/vstory/hook/rikkahub/MainHook$CompressFeedbackHooker;
+    const/4 v2, 0x1
+    invoke-direct {v1, v2}, Lcom/vstory/hook/rikkahub/MainHook$CompressFeedbackHooker;-><init>(I)V
+    const-string v4, "me.rerere.rikkahub.service.ChatService"
+    const-string v5, "compressConversation-hUnOzRk"
+    invoke-direct {p0, p1, v4, v5, v1}, Lcom/vstory/hook/rikkahub/MainHook;->hookMethodByName(Ljava/lang/ClassLoader;Ljava/lang/String;Ljava/lang/String;Lio/github/libxposed/api/XposedInterface$Hooker;)V
+    new-instance v1, Lcom/vstory/hook/rikkahub/MainHook$CompressFeedbackHooker;
+    const/4 v2, 0x2
+    invoke-direct {v1, v2}, Lcom/vstory/hook/rikkahub/MainHook$CompressFeedbackHooker;-><init>(I)V
+    const-string v4, "me.rerere.rikkahub.service.ChatService"
+    const-string v5, "addError"
+    invoke-direct {p0, p1, v4, v5, v1}, Lcom/vstory/hook/rikkahub/MainHook;->hookMethodByName(Ljava/lang/ClassLoader;Ljava/lang/String;Ljava/lang/String;Lio/github/libxposed/api/XposedInterface$Hooker;)V
+    new-instance v1, Lcom/vstory/hook/rikkahub/MainHook$CompressFeedbackHooker;
+    const/4 v2, 0x3
+    invoke-direct {v1, v2}, Lcom/vstory/hook/rikkahub/MainHook$CompressFeedbackHooker;-><init>(I)V
+    const-string v4, "me.rerere.rikkahub.service.ChatService"
+    const-string v5, "saveConversation"
+    invoke-direct {p0, p1, v4, v5, v1}, Lcom/vstory/hook/rikkahub/MainHook;->hookMethodByName(Ljava/lang/ClassLoader;Ljava/lang/String;Ljava/lang/String;Lio/github/libxposed/api/XposedInterface$Hooker;)V
     const/4 v0, 0x4
     const-string v1, "RikkaTune"
     new-instance v2, Ljava/lang/StringBuilder;
@@ -351,7 +433,139 @@
     return-void
 .end method
 .method private restoreModuleState()V
-    .registers 1
+    .registers 2
     sput-object p0, Lcom/vstory/hook/rikkahub/MainHook;->sDebug:Lcom/vstory/hook/rikkahub/MainHook;
+    const/4 v0, 0x0
+    sput-boolean v0, Lcom/vstory/hook/rikkahub/MainHook;->sCompressInProgress:Z
+    return-void
+.end method
+.method public static notifyCompressResult(Landroid/content/Context;Z)V
+    .registers 9
+    if-eqz p0, :return
+    const-string v0, "压缩成功"
+    if-eqz p1, :toast_fail
+    goto :toast_show
+    :toast_fail
+    const-string v0, "压缩失败"
+    :toast_show
+    const/4 v1, 0x0
+    invoke-static {p0, v0, v1}, Landroid/widget/Toast;->makeText(Landroid/content/Context;Ljava/lang/CharSequence;I)Landroid/widget/Toast;
+    move-result-object v0
+    invoke-virtual {v0}, Landroid/widget/Toast;->show()V
+    :try_start_vib
+    const-string v0, "RikkaTune"
+    const-string v1, "vibrate: try Vibrator"
+    invoke-static {v0, v1}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
+    const-string v0, "vibrator"
+    invoke-virtual {p0, v0}, Landroid/content/Context;->getSystemService(Ljava/lang/String;)Ljava/lang/Object;
+    move-result-object v0
+    instance-of v1, v0, Landroid/os/Vibrator;
+    if-eqz v1, :skip_vib
+    check-cast v0, Landroid/os/Vibrator;
+    const-wide/16 v1, 0x50
+    if-eqz p1, :vib_ms_fail
+    goto :vib_ms_ok
+    :vib_ms_fail
+    const-wide/16 v1, 0x78
+    :vib_ms_ok
+    const/16 v3, 0x96
+    if-eqz p1, :vib_amp_fail
+    goto :vib_amp_ok
+    :vib_amp_fail
+    const/16 v3, 0xc8
+    :vib_amp_ok
+    invoke-static {v1, v2, v3}, Landroid/os/VibrationEffect;->createOneShot(JI)Landroid/os/VibrationEffect;
+    move-result-object v1
+    invoke-virtual {v0, v1}, Landroid/os/Vibrator;->vibrate(Landroid/os/VibrationEffect;)V
+    :skip_vib
+    :try_end_vib
+    .catch Ljava/lang/Throwable; {:try_start_vib .. :try_end_vib} :catch_vib
+    :catch_vib
+    const-string v0, "RikkaTune"
+    const-string v1, "vibrate: FAILED (no VIBRATE perm?)"
+    invoke-static {v0, v1}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
+    :try_start_notif
+    const-string v0, "notification"
+    invoke-virtual {p0, v0}, Landroid/content/Context;->getSystemService(Ljava/lang/String;)Ljava/lang/Object;
+    move-result-object v0
+    instance-of v1, v0, Landroid/app/NotificationManager;
+    if-eqz v1, :skip_notif
+    check-cast v0, Landroid/app/NotificationManager;
+    const-string v1, "compress_feedback"
+    const-string v2, "压缩反馈"
+    const/4 v3, 0x3
+    new-instance v4, Landroid/app/NotificationChannel;
+    invoke-direct {v4, v1, v2, v3}, Landroid/app/NotificationChannel;-><init>(Ljava/lang/String;Ljava/lang/CharSequence;I)V
+    const/4 v1, 0x1
+    invoke-virtual {v4, v1}, Landroid/app/NotificationChannel;->enableVibration(Z)V
+    const/4 v1, 0x4
+    new-array v1, v1, [J
+    const/4 v2, 0x0
+    const-wide/16 v5, 0x0
+    aput-wide v5, v1, v2
+    const/4 v2, 0x1
+    const-wide/16 v5, 0x50
+    if-eqz p1, :pat_s1
+    goto :pat_ok1
+    :pat_s1
+    const-wide/16 v5, 0x78
+    :pat_ok1
+    aput-wide v5, v1, v2
+    const/4 v2, 0x2
+    const-wide/16 v5, 0x28
+    if-eqz p1, :pat_s2
+    goto :pat_ok2
+    :pat_s2
+    const-wide/16 v5, 0x3c
+    :pat_ok2
+    aput-wide v5, v1, v2
+    const/4 v2, 0x3
+    const-wide/16 v5, 0x50
+    if-eqz p1, :pat_s3
+    goto :pat_ok3
+    :pat_s3
+    const-wide/16 v5, 0x78
+    :pat_ok3
+    aput-wide v5, v1, v2
+    invoke-virtual {v4, v1}, Landroid/app/NotificationChannel;->setVibrationPattern([J)V
+    invoke-virtual {v0, v4}, Landroid/app/NotificationManager;->createNotificationChannel(Landroid/app/NotificationChannel;)V
+    const-string v1, "RikkaTune"
+    const-string v2, "notify: channel created with vibration"
+    invoke-static {v1, v2}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
+    new-instance v4, Landroid/app/Notification$Builder;
+    const-string v5, "compress_feedback"
+    invoke-direct {v4, p0, v5}, Landroid/app/Notification$Builder;-><init>(Landroid/content/Context;Ljava/lang/String;)V
+    const v5, 0x1080083
+    if-eqz p1, :icon_fail
+    goto :icon_ok
+    :icon_fail
+    const v5, 0x1080078
+    :icon_ok
+    invoke-virtual {v4, v5}, Landroid/app/Notification$Builder;->setSmallIcon(I)Landroid/app/Notification$Builder;
+    const-string v5, "RikkaTune"
+    invoke-virtual {v4, v5}, Landroid/app/Notification$Builder;->setContentTitle(Ljava/lang/CharSequence;)Landroid/app/Notification$Builder;
+    const-string v5, "对话历史压缩成功"
+    if-eqz p1, :text_fail
+    goto :text_ok
+    :text_fail
+    const-string v5, "对话历史压缩失败"
+    :text_ok
+    invoke-virtual {v4, v5}, Landroid/app/Notification$Builder;->setContentText(Ljava/lang/CharSequence;)Landroid/app/Notification$Builder;
+    const/4 v5, 0x1
+    invoke-virtual {v4, v5}, Landroid/app/Notification$Builder;->setAutoCancel(Z)Landroid/app/Notification$Builder;
+    invoke-virtual {v4}, Landroid/app/Notification$Builder;->build()Landroid/app/Notification;
+    move-result-object v1
+    const/4 v2, 0x1
+    if-eqz p1, :notif_id_fail
+    goto :notif_id_ok
+    :notif_id_fail
+    const/4 v2, 0x2
+    :notif_id_ok
+    invoke-virtual {v0, v2, v1}, Landroid/app/NotificationManager;->notify(ILandroid/app/Notification;)V
+    :skip_notif
+    :try_end_notif
+    .catch Ljava/lang/Throwable; {:try_start_notif .. :try_end_notif} :catch_notif
+    :catch_notif
+    :return
     return-void
 .end method

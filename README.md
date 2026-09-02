@@ -15,7 +15,7 @@ RikkaHub 增强模块（LSPosed / Xposed）。
 
 ## 版本
 
-- 当前版本：`v1.3.0`（versionCode 32）
+- 当前版本：`v1.4.0`（versionCode 54）
 
 基于 [RikkaHub](https://github.com/rikkahub/rikkahub)（Android 开源 AI 聊天客户端）。
 
