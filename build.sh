@@ -1,4 +1,6 @@
 #!/bin/bash
+# TEMPLATE_VERSION=1.2.1    # 模板版本号(项目脚本对比用, 勿删)
+# SCRIPT_VERSION=1.2.1        # 脚本自身版本号(内容改动时 bump; 项目定制后可更高, 防覆盖)
 # ============================================================
 # libxposed API 102 模块通用构建脚本
 # 来源: 懒饭模块 + 钱迹模块 实战沉淀
@@ -30,10 +32,14 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# PROJECT-CUSTOM-BEGIN
 # 📌 新项目修改点 1: 模块名（输出 APK 文件名）
 MODULE_NAME="RikkaTune"
 # 📌 新项目修改点 2: 包名（必须与 smali 目录/AndroidManifest 一致）
 PACKAGE_NAME="com.vstory.hook.rikkahub"
+# 📌 新项目修改点 1: 模块名（输出 APK 文件名）— 项目定制段, 模板更新时自动保留
+# 📌 新项目修改点 2: 包名（必须与 smali 目录/AndroidManifest 一致）— 项目定制段
+# PROJECT-CUSTOM-END
 # 📌 新项目修改点 3: 初始版本
 INIT_VERSION_NAME="1.0.0"
 INIT_VERSION_CODE=1
@@ -82,6 +88,24 @@ if [ "$SKIP_CHECK" -eq 0 ] && [ -f "dev-project/check_build_env.sh" ]; then
         else
             echo "⚠️  环境检查未通过（继续构建；用 ./build.sh -c 可强制拦截）"
             echo ""
+        fi
+    fi
+fi
+
+# ---------- 模板脚本版本自检（循环: 每次构建对比模板是否更新）----------
+# 项目 dev-project/check_template_update.sh 复制自知识库/scripts/;
+# 对比模板 TEMPLATE_VERSION vs 项目脚本记录版本:
+#   模板新 → 提示 (自动模式) / 自动 --update 同步 (-c 强制模式)
+if [ "$SKIP_CHECK" -eq 0 ] && [ -f "dev-project/check_template_update.sh" ]; then
+    echo "🔍 模板脚本版本自检..."
+    if bash dev-project/check_template_update.sh . >/dev/null 2>&1; then
+        echo "  ✅ 模板脚本均为最新"
+    else
+        if [ "$CHECK_MODE" -eq 1 ]; then
+            echo "  🔧 -c 强制模式: 自动同步模板脚本..."
+            bash dev-project/check_template_update.sh . --update 2>&1 | tail -3
+        else
+            echo "  ⚠️  模板脚本有过期项（用 ./build.sh -c 自动同步, 或手动 check_template_update.sh --update）"
         fi
     fi
 fi
