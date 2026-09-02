@@ -38,7 +38,7 @@
 # virtual methods
 # Object intercept(Chain chain) -> 判断 arg1 是否为 ASR 声音资源, 是则返回 null(不播), 否则 proceed()
 .method public intercept(Lio/github/libxposed/api/XposedInterface$Chain;)Ljava/lang/Object;
-    .registers 4
+    .registers 5
 
     # Object arg1 = chain.getArg(1);   // 资源 id
     const/4 v0, 0x1
@@ -46,6 +46,13 @@
     invoke-interface {p1, v0}, Lio/github/libxposed/api/XposedInterface$Chain;->getArg(I)Ljava/lang/Object;
 
     move-result-object v0
+
+    # ⚠️ 控制面板开关: 消除提示音关闭 → 正常放行(不吞任何声音)
+    invoke-static {}, Lcom/vstory/hook/rikkahub/Prefs;->isAsrSoundMuted()Z
+
+    move-result v2
+
+    if-eqz v2, :pass
 
     # 防御: 非 Integer 直接放行
     instance-of v1, v0, Ljava/lang/Integer;

@@ -166,6 +166,25 @@ echo "构建版本: ${VERSION_NAME}(${VERSION_CODE})"
 # ---------- 写回 Manifest 版本号 (必须带 android: 前缀, 系统才能读到) ----------
 sed -i "s/android:versionCode=\"[0-9]*\"/android:versionCode=\"$VERSION_CODE\"/; s/android:versionName=\"[^\"]*\"/android:versionName=\"$VERSION_NAME\"/" AndroidManifest.xml
 
+# ---------- debug 版注入 android:debuggable=true (2026-09-02 UI 日志黑盒修复) ----------
+# 现象: UI 进程(控制面板)日志全被 ColorOS 过滤 -> 无法判断 onServiceBind/开关写入
+# 原因: APK 无 debuggable -> 非 debuggable app 自定义 Log.d 不输出 (framework 白名单 VRI 等除外)
+# 做法: debug 版在 <application> 注入 android:debuggable=true; release 版移除(不留)
+DEBUGGABLE_INJECTED=0
+if [ "$DEBUG_SUFFIX" = "_debug" ]; then
+    if ! grep -q "android:debuggable=\"true\"" AndroidManifest.xml; then
+        sed -i 's|<application|<application android:debuggable="true"|' AndroidManifest.xml
+        DEBUGGABLE_INJECTED=1
+        echo "[debug] 注入 android:debuggable=true (UI 进程日志可见)"
+    fi
+else
+    if grep -q "android:debuggable=\"true\"" AndroidManifest.xml; then
+        sed -i 's| android:debuggable="true"||' AndroidManifest.xml
+        echo "[release] 移除 android:debuggable (正式版不留调试属性)"
+    fi
+fi
+# ⚠️ 无论 debug/release 都保证 <application> 只有一个 android: 命名空间声明; 注入只在 <application 标签首
+
 # ---------- 编译 ----------
 echo "[1/5] smali 编译..."
 rm -rf build
@@ -281,6 +300,12 @@ if [ "$RELEASE_MODE" -eq 1 ]; then
     bash dev-project/toggle_debug.sh on
     echo "[release] 恢复后 Debug.d 调用: $(grep -rE '^[[:space:]]*invoke-static[[:space:]]*\{.*Debug;->d' src/smali/ 2>/dev/null | wc -l) (应>0)"
     echo "[release] 源码恢复验证: toggle on 已通过 smali 编译验证（源码可编译）"
+fi
+
+# ---------- 还原 manifest debuggable (源文件不留, 防污染 release 判定) ----------
+if [ "$DEBUGGABLE_INJECTED" -eq 1 ] && grep -q "android:debuggable=\"true\"" AndroidManifest.xml; then
+    sed -i 's| android:debuggable="true"||' AndroidManifest.xml
+    echo "[cleanup] 已还原 AndroidManifest.xml (移除 debuggable 注入)"
 fi
 
 echo ""

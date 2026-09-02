@@ -1,0 +1,45 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace = 'com.vstory.hook.rikkahub'
+    compileSdk = 37
+
+    signingConfigs {
+        create("universal") {
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+            storeFile = file("../debug.keystore")
+            storePassword = "android"
+        }
+    }
+    defaultConfig {
+        applicationId = "com.vstory.hook.rikkahub"
+        minSdk = 26
+        targetSdk = 37
+        versionName = "2.0.0"
+        versionCode = 70
+    }
+    buildTypes {
+        all { signingConfig = signingConfigs.getByName("universal") }
+        debug {
+            debuggable = true
+        }
+        release {
+            minifyEnabled = false
+            debuggable = false
+        }
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    lint { checkReleaseBuilds = false }
+}
+
+dependencies {
+    compileOnly(files("libs/libxposed/api.jar"))
+    implementation(files("libs/libxposed/interface.jar"))
+    implementation(files("libs/libxposed/service.jar"))
+}

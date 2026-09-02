@@ -47,6 +47,13 @@
 .method public intercept(Lio/github/libxposed/api/XposedInterface$Chain;)Ljava/lang/Object;
     .registers 10
 
+    # ⚠️ 控制面板开关: 压缩对话反馈关闭 → 整个反馈机制不启用, 原样放行
+    invoke-static {}, Lcom/vstory/hook/rikkahub/Prefs;->isCompressFeedback()Z
+
+    move-result v2
+
+    if-eqz v2, :proceed
+
     iget v0, p0, Lcom/vstory/hook/rikkahub/MainHook$CompressFeedbackHooker;->kind:I
 
     # switch(kind)

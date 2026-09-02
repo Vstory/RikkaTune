@@ -18,15 +18,15 @@
 #
 .class public Lcom/vstory/hook/rikkahub/MainHook;
 .super Lio/github/libxposed/api/XposedModule;
+.implements Lcom/vstory/hook/rikkahub/HookLogger;
 
 # 保存被 hook 应用的 classLoader（热重载 fallback 用，主路径从旧 hook handle 取）
 .field private mAppClassLoader:Ljava/lang/ClassLoader;
 
-# ⚠️ 调试日志入口: 供 Debug.smali 拿当前 MainHook 实例来调框架 log()（D 级框架日志）
-#   - onModuleLoaded 里初始化为 this; 热重载后 sDebug 复位为 null, 需在 restoreModuleState 恢复
-#   - 静态引用: 让独立 Debug 类(无 MainHook 实例)也能调框架 log(); 不影响 logcat
-#   - ⚠️ 必须 public: Debug 类要读它(跨类), private 会抛 IllegalAccessError
-.field public static sDebug:Lcom/vstory/hook/rikkahub/MainHook;
+# ⚠️ 框架日志注入 (2026-09-02 重构): Debug 静态持有 sLogger(HookLogger), 本类在
+#   onModuleLoaded/restoreModuleState 注入 this (原 MainHook.sDebug 已删除)
+#   - UI 进程(无 MainHook 被注入) sLogger=null -> Debug.d 只走 logcat,
+#     不再触发 MainHook 类加载 -> 修复 UI 打开控制面板 NoClassDefFoundError
 
 # ⚠️ hook 注册计数器（聚合日志防刷屏, 2026-09-01）
 #   - 每个 hook 成功/失败只更新计数, 不单独 log()（避免每 hook 一条刷屏）
@@ -759,7 +759,8 @@
 
 # virtual methods
 # D 级调试日志实例方法（框架日志）: 内部调 this.log(3, tag, msg)（android.util.Log.DEBUG=3）
-# 供 Debug.smali 的静态 d() 通过 sDebug 调框架 log(); 调试版保留, 正式版可注释/保留(无害, 无输出)
+# 实现 HookLogger.logD (框架日志); Debug.smali 静态 d() 经 Debug.sLogger(接口) invoke-interface 调到这里
+# 调试版保留, 正式版可注释/保留(无害, 无输出)
 .method public logD(Ljava/lang/String;Ljava/lang/String;)V
     .registers 4
 
@@ -786,8 +787,8 @@
 .method public onModuleLoaded(Lio/github/libxposed/api/XposedModuleInterface$ModuleLoadedParam;)V
     .registers 5
 
-    # ⚠️ 初始化静态引用 sDebug = this（供 Debug.smali 调框架 log()）; 热重载后需在 restoreModuleState 恢复
-    sput-object p0, Lcom/vstory/hook/rikkahub/MainHook;->sDebug:Lcom/vstory/hook/rikkahub/MainHook;
+    # ⚠️ 注入框架日志引用 sLogger = this（Debug 静态持有 HookLogger; UI 进程为 null 只走 logcat）
+    sput-object p0, Lcom/vstory/hook/rikkahub/Debug;->sLogger:Lcom/vstory/hook/rikkahub/HookLogger;
 
     # log(Log.INFO, "TAG", "api102 module loaded")
     const/4 v0, 0x4
@@ -797,6 +798,16 @@
     const-string v2, "api102 module loaded"
 
     invoke-virtual {p0, v0, v1, v2}, Lio/github/libxposed/api/XposedInterfaceWrapper;->log(ILjava/lang/String;Ljava/lang/String;)V
+
+    # ⚠️ 绑定跨进程配置 RemotePreferences -> Prefs（UI 控制面板开关; hooker 里每次直读零 IPC）
+    #    冷启动路径: onModuleLoaded 里绑定; 热重载路径: restoreModuleState 里重绑 (static 复位)
+    const-string v0, "rikka_config"
+
+    invoke-virtual {p0, v0}, Lio/github/libxposed/api/XposedInterfaceWrapper;->getRemotePreferences(Ljava/lang/String;)Landroid/content/SharedPreferences;
+
+    move-result-object v0
+
+    invoke-static {v0}, Lcom/vstory/hook/rikkahub/Prefs;->init(Landroid/content/SharedPreferences;)V
 
     return-void
 .end method
@@ -950,19 +961,22 @@
 .method private restoreModuleState()V
     .registers 2
 
-    # ⚠️ 恢复静态引用 sDebug = this（热重载 = 新 ClassLoader 重载模块类 → static 全复位, sDebug 变 null）
-    sput-object p0, Lcom/vstory/hook/rikkahub/MainHook;->sDebug:Lcom/vstory/hook/rikkahub/MainHook;
+    # ⚠️ 重新注入框架日志引用 sLogger = this（热重载 = 新 ClassLoader 重载模块类 → static 全复位, sLogger 变 null）
+    sput-object p0, Lcom/vstory/hook/rikkahub/Debug;->sLogger:Lcom/vstory/hook/rikkahub/HookLogger;
 
     # ⚠️ 复位压缩反馈标志（热重载后 static 全复位, 避免残留 true 误报成功）
     const/4 v0, 0x0
 
     sput-boolean v0, Lcom/vstory/hook/rikkahub/MainHook;->sCompressInProgress:Z
 
-    # 示例: 重新绑定跨进程配置 (XposedModule.getRemotePreferences)
-    # const-string v0, "config"
-    # invoke-virtual {p0, v0}, Lio/github/libxposed/api/XposedModule;->getRemotePreferences(Ljava/lang/String;)Landroid/content/SharedPreferences;
-    # move-result-object v0
-    # ... 再调用你自己的 ConfigData.init / 数据类 init / 广播标志恢复
+    # ⚠️ 热重载后 static 复位 -> Prefs.sPrefs 变 null, 重新绑定跨进程配置 (UI 控制面板开关)
+    const-string v0, "rikka_config"
+
+    invoke-virtual {p0, v0}, Lio/github/libxposed/api/XposedInterfaceWrapper;->getRemotePreferences(Ljava/lang/String;)Landroid/content/SharedPreferences;
+
+    move-result-object v0
+
+    invoke-static {v0}, Lcom/vstory/hook/rikkahub/Prefs;->init(Landroid/content/SharedPreferences;)V
 
     return-void
 .end method

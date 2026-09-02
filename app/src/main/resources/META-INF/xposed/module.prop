@@ -1,0 +1,9 @@
+# api102 模块标识（LSPosed 读取）
+# minApiVersion=101 最低 API 版本
+# targetApiVersion=102 目标 API 版本
+# staticScope=true 静态作用域（作用域由 scope.list 声明, 无需用户勾选）
+# autoHotReload=true 支持热重载（配合 onHotReloading 返回 true）
+minApiVersion=101
+targetApiVersion=102
+staticScope=true
+autoHotReload=true

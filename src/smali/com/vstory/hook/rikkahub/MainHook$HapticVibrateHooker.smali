@@ -50,6 +50,13 @@
 
     move-result-object v0
 
+    # ⚠️ 控制面板开关: 语音振动增强关闭 → 正常放行(不做替换)
+    invoke-static {}, Lcom/vstory/hook/rikkahub/Prefs;->isHapticBoost()Z
+
+    move-result v2
+
+    if-eqz v2, :pass
+
     # 防御: 非 Integer 直接放行
     instance-of v1, v0, Ljava/lang/Integer;
 

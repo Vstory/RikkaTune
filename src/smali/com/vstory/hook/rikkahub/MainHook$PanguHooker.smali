@@ -50,6 +50,14 @@
     # if (raw == null) return null;
     if-eqz v0, :ret_orig
 
+    # ⚠️ 控制面板开关: 盘古之白关闭 → 直接返回原值(不处理)
+    #    Prefs.isPanguEnabled(): null prefs 时默认 true(全开=老行为), 零 IPC 本地读
+    invoke-static {}, Lcom/vstory/hook/rikkahub/Prefs;->isPanguEnabled()Z
+
+    move-result v2
+
+    if-eqz v2, :ret_orig
+
     # 安全防护: 若非 String 直接返回原值(不处理非字符串)
     instance-of v2, v0, Ljava/lang/String;
 
