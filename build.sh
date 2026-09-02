@@ -33,9 +33,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # PROJECT-CUSTOM-BEGIN
-# 📌 新项目修改点 1: 模块名（输出 APK 文件名）
+# 📌 新项目修改点 1: 模块名（输出 APK 文件名）— 项目定制段, 模板更新时自动保留
 MODULE_NAME="RikkaTune"
-# 📌 新项目修改点 2: 包名（必须与 smali 目录/AndroidManifest 一致）
+# 📌 新项目修改点 2: 包名（必须与 smali 目录/AndroidManifest 一致）— 项目定制段
 PACKAGE_NAME="com.vstory.hook.rikkahub"
 # 📌 新项目修改点 1: 模块名（输出 APK 文件名）— 项目定制段, 模板更新时自动保留
 # 📌 新项目修改点 2: 包名（必须与 smali 目录/AndroidManifest 一致）— 项目定制段
