@@ -8,7 +8,7 @@
     - 模块标识/作用域 在 META-INF/xposed/ 声明, 不在这里
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    android:versionCode="53"
+    android:versionCode="54"
     android:versionName="1.4.0"
     package="com.vstory.hook.rikkahub">
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="37" />
