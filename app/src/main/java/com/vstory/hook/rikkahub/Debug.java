@@ -13,11 +13,11 @@ public class Debug {
 
     public static void d(String tag, String msg) {
         if (sLogger != null) sLogger.logD(tag, msg);
-        android.util.Log.d(tag, msg);
+        android.util.Log.i(tag, msg);  // 改用 Log.i 避免被 Android 16 过滤
     }
 
     public static void d(String tag, String msg, Throwable tr) {
         if (sLogger != null) sLogger.logD(tag, msg, tr);
-        android.util.Log.d(tag, msg, tr);
+        android.util.Log.i(tag, msg);  // 改用 Log.i 避免被 Android 16 过滤
     }
 }
