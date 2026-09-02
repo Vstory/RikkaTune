@@ -1013,13 +1013,13 @@
     #          ② 主路径 = 通知渠道启用振动(channel.enableVibration + setVibrationPattern)
     #             → 系统通知服务负责振动, 不需要 APP 的 VIBRATE 权限, 只要通知能弹出(已有 POST_NOTIFICATIONS)
     :try_start_vib
-    #DEBUG_START
+    #ifdef DEBUG
     # Debug.d("RikkaTune", "vibrate: try Vibrator")
     const-string v0, "RikkaTune"
 
     const-string v1, "vibrate: try Vibrator"
     invoke-static {v0, v1}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
-    #DEBUG_END
+    #endif
 
     # Vibrator vib = (Vibrator) ctx.getSystemService("vibrator")
     const-string v0, "vibrator"
@@ -1070,13 +1070,13 @@
 
     :catch_vib
     # 振动失败静默跳过 (无 VIBRATE 权限时走这里, 通知渠道振动兜底)
-    #DEBUG_START
+    #ifdef DEBUG
     # Debug.d("RikkaTune", "vibrate: FAILED (no VIBRATE perm?)")
     const-string v0, "RikkaTune"
 
     const-string v1, "vibrate: FAILED (no VIBRATE perm?)"
     invoke-static {v0, v1}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
-    #DEBUG_END
+    #endif
 
     # ============ 通知 ============
     :try_start_notif
@@ -1170,13 +1170,13 @@
     # nm.createNotificationChannel(channel)
     invoke-virtual {v0, v4}, Landroid/app/NotificationManager;->createNotificationChannel(Landroid/app/NotificationChannel;)V
 
-    #DEBUG_START
+    #ifdef DEBUG
     # Debug.d("RikkaTune", "notify: channel created with vibration")
     const-string v1, "RikkaTune"
 
     const-string v2, "notify: channel created with vibration"
     invoke-static {v1, v2}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
-    #DEBUG_END
+    #endif
 
     # Notification.Builder builder = new Notification.Builder(ctx, channelId)
     new-instance v4, Landroid/app/Notification$Builder;

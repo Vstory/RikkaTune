@@ -69,13 +69,13 @@
     # kind=1: compressConversation 入口 → 置压缩标志
     # ============================================================
     :kind_1
-    #DEBUG_START
+    #ifdef DEBUG
     # Debug.d("RikkaTune", "compress start, flag=true")
     const-string v0, "RikkaTune"
 
     const-string v1, "compress start, flag=true"
     invoke-static {v0, v1}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
-    #DEBUG_END
+    #endif
 
     const/4 v0, 0x1
 
@@ -90,7 +90,7 @@
     # 压缩中? 不是则放行
     sget-boolean v0, Lcom/vstory/hook/rikkahub/MainHook;->sCompressInProgress:Z
 
-    #DEBUG_START
+    #ifdef DEBUG
     # ⚠️ 调试诊断日志(保留到 debug 版): 每次 addError 被调都打印标志状态 + title 值
     #   📌 用途: RikkaHub 新版本发布后, 若压缩反馈功能失效, 构建 debug 版可直接看
     #   这里确认 addError 是否被调/标志状态/title 值 → 快速定位 hook 点是否失效
@@ -103,10 +103,10 @@
     invoke-virtual {v7, v3}, Ljava/lang/String;->concat(Ljava/lang/String;)Ljava/lang/String;
     move-result-object v3
     invoke-static {v6, v3}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
-    #DEBUG_END
+    #endif
 
     # 诊断: 打 title 值 (addError 签名: error, conversationId, title, solution → title=getArg(2))
-    #DEBUG_START
+    #ifdef DEBUG
     const/4 v3, 0x2
     invoke-interface {p1, v3}, Lio/github/libxposed/api/XposedInterface$Chain;->getArg(I)Ljava/lang/Object;
     move-result-object v3
@@ -116,7 +116,7 @@
     invoke-virtual {v7, v3}, Ljava/lang/String;->concat(Ljava/lang/String;)Ljava/lang/String;
     move-result-object v3
     invoke-static {v6, v3}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
-    #DEBUG_END
+    #endif
 
     # 📌 2026-09-02 修复: 压缩失败判定改为【只要 sCompressInProgress=true 就反馈失败】
     #   实测: RikkaHub 压缩失败 addError 的 title=null! (不传 title)
@@ -127,13 +127,13 @@
 
     # 压缩失败 → 提示
     :is_compress_error
-    #DEBUG_START
+    #ifdef DEBUG
     # Debug.d("RikkaTune", "compress FAILED, notify")
     const-string v0, "RikkaTune"
 
     const-string v1, "compress FAILED, notify"
     invoke-static {v0, v1}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
-    #DEBUG_END
+    #endif
 
     # Context ctx = getContextFromThis(chain)
     invoke-static {p1}, Lcom/vstory/hook/rikkahub/MainHook$CompressFeedbackHooker;->getContextFromThis(Lio/github/libxposed/api/XposedInterface$Chain;)Landroid/content/Context;
@@ -208,13 +208,13 @@
 
     # 栈里有 compressConversation → 真压缩成功 → 反馈
     :from_compress
-    #DEBUG_START
+    #ifdef DEBUG
     # Debug.d("RikkaTune", "compress SUCCESS, notify")
     const-string v0, "RikkaTune"
 
     const-string v1, "compress SUCCESS, notify"
     invoke-static {v0, v1}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
-    #DEBUG_END
+    #endif
 
     # Context ctx = getContextFromThis(chain)
     invoke-static {p1}, Lcom/vstory/hook/rikkahub/MainHook$CompressFeedbackHooker;->getContextFromThis(Lio/github/libxposed/api/XposedInterface$Chain;)Landroid/content/Context;
