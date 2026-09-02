@@ -51,6 +51,8 @@ SMALI="/usr/bin/smali"
 CUSTOM_KEYSTORE=""
 BUMP="patch"
 RELEASE_MODE=0
+CHECK_MODE=0       # 0=自动(有脚本就跑, 失败仅警告) / 1=强制(失败即退出)
+SKIP_CHECK=0       # 1=跳过环境检查
 while [ $# -gt 0 ]; do
     case "$1" in
         -k|--keystore) CUSTOM_KEYSTORE="$2"; shift 2 ;;
@@ -58,9 +60,31 @@ while [ $# -gt 0 ]; do
         patch|minor|major) BUMP="$1"; shift ;;
         release) RELEASE_MODE=1; shift ;;   # 一键正式版: toggle off → build → 验证 → toggle on
         -q|--quiet) QUIET=1; shift ;;        # 静默模式: 成功后不打印日志请求提示
-        *) echo "未知参数: $1 (支持 patch|minor|major, release, -k keystore, -q)"; exit 1 ;;
+        -c|--check) CHECK_MODE=1; shift ;;   # 强制构建前环境检查(失败即退出)
+        --skip-check) SKIP_CHECK=1; shift ;; # 跳过构建前环境检查
+        *) echo "未知参数: $1 (支持 patch|minor|major, release, -c, --skip-check, -k keystore, -q)"; exit 1 ;;
     esac
 done
+
+# ---------- 构建前环境检查（循环: 每次构建核对流程文件符合性）----------
+# 有 dev-project/check_build_env.sh 就跑；FAIL 时:
+#   -c 强制模式 → 退出
+#   自动模式   → 警告但继续（老项目兼容）
+if [ "$SKIP_CHECK" -eq 0 ] && [ -f "dev-project/check_build_env.sh" ]; then
+    echo ""
+    echo "🔍 构建前环境检查..."
+    if bash dev-project/check_build_env.sh .; then
+        echo ""
+    else
+        if [ "$CHECK_MODE" -eq 1 ]; then
+            echo "❌ 环境检查未通过（-c 强制模式），请先修复（参照构建流程.md「已有项目升级」）"
+            exit 1
+        else
+            echo "⚠️  环境检查未通过（继续构建；用 ./build.sh -c 可强制拦截）"
+            echo ""
+        fi
+    fi
+fi
 
 # ---------- 签名配置 (默认 debug) ----------
 KEYSTORE_FILE="${KEYSTORE_FILE:-$CUSTOM_KEYSTORE}"
