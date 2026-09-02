@@ -50,7 +50,7 @@ public class MainHook extends XposedModule implements HookLogger {
         Prefs.init(remotePrefs);
         // #ifdef DEBUG
         // 监听开关变化 → 实时打印到 LSPosed 框架日志 (INFO 级)
-        if (Debug.DEBUG) {
+        if (BuildConfig.DEBUG) {
             remotePrefs.registerOnSharedPreferenceChangeListener((prefs, key) -> {
                 boolean val = prefs.getBoolean(key, false);
                 log(INFO, TAG, "[switch] " + key + " = " + val);
@@ -242,7 +242,7 @@ public class MainHook extends XposedModule implements HookLogger {
         SharedPreferences remotePrefs = getRemotePreferences(Prefs.PREFS_GROUP);
         Prefs.init(remotePrefs);
         // #ifdef DEBUG
-        if (Debug.DEBUG) {
+        if (BuildConfig.DEBUG) {
             remotePrefs.registerOnSharedPreferenceChangeListener((prefs, key) -> {
                 boolean val = prefs.getBoolean(key, false);
                 log(INFO, TAG, "[switch] " + key + " = " + val);

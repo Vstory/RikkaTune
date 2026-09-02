@@ -8,9 +8,6 @@ package com.vstory.hook.rikkahub;
  */
 public class Debug {
 
-    /** true = debug 构建（实时日志等调试代码生效）；release 构建改 false */
-    public static final boolean DEBUG = true;
-
     /** hook 进程由 MainHook 注入，UI 进程为 null */
     public static HookLogger sLogger;
 
