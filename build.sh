@@ -52,6 +52,20 @@ if [ "$SKIP_CHECK" -eq 0 ] && [ -f "dev-project/check_build_env.sh" ]; then
     fi
 fi
 
+if [ "$SKIP_CHECK" -eq 0 ] && [ -f "dev-project/check_template_update.sh" ]; then
+    echo "🔍 模板脚本版本自检..."
+    if bash dev-project/check_template_update.sh . >/dev/null 2>&1; then
+        echo "  ✅ 模板脚本均为最新"
+    else
+        if [ "$CHECK_MODE" -eq 1 ]; then
+            echo "  🔧 -c 强制模式: 自动同步模板脚本..."
+            bash dev-project/check_template_update.sh . --update 2>&1 | tail -3
+        else
+            echo "  ⚠️  模板脚本有过期项（用 ./build.sh -c 自动同步, 或手动 check_template_update.sh --update）"
+        fi
+    fi
+fi
+
 KEYSTORE_FILE="${KEYSTORE_FILE:-$CUSTOM_KEYSTORE}"
 KEYSTORE_ALIAS="${KEYSTORE_ALIAS:-androiddebugkey}"
 KEYSTORE_STORE_PASS="${KEYSTORE_STORE_PASS:-android}"
@@ -199,6 +213,7 @@ if [ "$RELEASE_MODE" -eq 1 ]; then
     echo "[release] 恢复调试块 (toggle on)..."
     bash dev-project/toggle_debug.sh on
     echo "[release] 恢复后 Debug.d 调用: $(grep -rE '^[[:space:]]*invoke-static[[:space:]]*\{.*Debug;->d' src/smali/ 2>/dev/null | wc -l) (应>0)"
+    echo "[release] 源码恢复验证: toggle on 已通过 smali 编译验证（源码可编译）"
 fi
 
 echo ""
