@@ -6,6 +6,7 @@ import static android.util.Log.INFO;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
@@ -45,7 +46,13 @@ public class MainHook extends XposedModule implements HookLogger {
     public void onModuleLoaded(XposedModuleInterface.ModuleLoadedParam param) {
         Debug.sLogger = this;
         log(INFO, TAG, "api102 module loaded");
-        Prefs.init(getRemotePreferences(Prefs.PREFS_GROUP));
+        SharedPreferences remotePrefs = getRemotePreferences(Prefs.PREFS_GROUP);
+        Prefs.init(remotePrefs);
+        // 监听开关变化 → 打印到 LSPosed 框架日志 (INFO 级)
+        remotePrefs.registerOnSharedPreferenceChangeListener((prefs, key) -> {
+            boolean val = prefs.getBoolean(key, false);
+            log(INFO, TAG, "[switch] " + key + " = " + val);
+        });
     }
 
     @Override
@@ -228,7 +235,12 @@ public class MainHook extends XposedModule implements HookLogger {
     private void restoreModuleState() {
         Debug.sLogger = this;
         sCompressInProgress = false;
-        Prefs.init(getRemotePreferences(Prefs.PREFS_GROUP));
+        SharedPreferences remotePrefs = getRemotePreferences(Prefs.PREFS_GROUP);
+        Prefs.init(remotePrefs);
+        remotePrefs.registerOnSharedPreferenceChangeListener((prefs, key) -> {
+            boolean val = prefs.getBoolean(key, false);
+            log(INFO, TAG, "[switch] " + key + " = " + val);
+        });
     }
 
     // ===== notifyCompressResult =====
