@@ -180,31 +180,46 @@ echo "[验证] 自动运行 verify.sh..."
     exit 1
 }
 
-# ---------- release 模式: 反编译兜底验证 (v48 教训自动化) ----------
-if [ "$RELEASE_MODE" -eq 1 ]; then
+# ---------- 反编译兜底验证（release: Debug.d=0 / debug: Debug.d>0）----------
+# v48 教训自动化: 构建后必须反编译产物确认形态正确, 防止误判/漏注释
+#   release 模式: Debug.d 必须=0（正式版干净）
+#   debug 模式:   Debug.d 必须>0（调试代码在）
+if [ "$RELEASE_MODE" -eq 1 ] || [ "$DEBUG_SUFFIX" = "_debug" ]; then
+    MODE_LABEL="release"
+    if [ "$DEBUG_SUFFIX" = "_debug" ]; then MODE_LABEL="debug"; fi
     echo ""
-    echo "[release] 反编译兜底验证（Debug.d=0 才算正式版）..."
+    echo "[$MODE_LABEL] 反编译兜底验证（Debug.d 应${MODE_LABEL}=0 / debug>0）..."
     unzip -p "$OUT" classes.dex > build/dex/verify_classes.dex 2>/dev/null || {
-        echo "❌ [release] 无法从 APK 提取 classes.dex"
+        echo "❌ [$MODE_LABEL] 无法从 APK 提取 classes.dex"
         exit 1
     }
     rm -rf build/dex/verify_smali
     if command -v baksmali >/dev/null 2>&1; then
         baksmali disassemble build/dex/verify_classes.dex -o build/dex/verify_smali 2>/dev/null || {
-            echo "❌ [release] baksmali 反编译失败"
+            echo "❌ [$MODE_LABEL] baksmali 反编译失败"
             exit 1
         }
     else
-        echo "❌ [release] 未找到 baksmali 工具（反编译兜底需要）"
+        echo "❌ [$MODE_LABEL] 未找到 baksmali 工具（反编译兜底需要）"
         exit 1
     fi
     DEBUGCNT=$(grep -r 'Debug;->d' build/dex/verify_smali/ 2>/dev/null | wc -l)
-    if [ "$DEBUGCNT" -eq 0 ]; then
-        echo "  ✅ 反编译确认: Debug.d=0（正式版干净）"
+    if [ "$RELEASE_MODE" -eq 1 ]; then
+        if [ "$DEBUGCNT" -eq 0 ]; then
+            echo "  ✅ 反编译确认: Debug.d=0（正式版干净）"
+        else
+            echo "  ❌ 反编译发现 $DEBUGCNT 处 Debug.d（正式版不应含调试代码！）"
+            echo "     请检查: toggle off 是否生效 / 是否有标记外的裸调试代码"
+            exit 1
+        fi
     else
-        echo "  ❌ 反编译发现 $DEBUGCNT 处 Debug.d（正式版不应含调试代码！）"
-        echo "     请检查: toggle off 是否生效 / 是否有标记外的裸调试代码"
-        exit 1
+        if [ "$DEBUGCNT" -gt 0 ]; then
+            echo "  ✅ 反编译确认: Debug.d=$DEBUGCNT（调试代码在, debug 版正确）"
+        else
+            echo "  ❌ 反编译发现 Debug.d=0（debug 版应含调试代码！）"
+            echo "     请检查: 是否误 toggle off / 调试块是否被意外注释"
+            exit 1
+        fi
     fi
 fi
 
