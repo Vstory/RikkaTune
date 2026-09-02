@@ -73,7 +73,7 @@
     const-string v0, "RikkaTune"
 
     const-string v1, "compress start, flag=true"
-
+    # 
     invoke-static {v0, v1}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
 
     const/4 v0, 0x1
@@ -94,38 +94,38 @@
     #   这里确认 addError 是否被调/标志状态/title 值 → 快速定位 hook 点是否失效
     #   ⚠️ 发布正式版时, 以下 Debug.d 调用随 strip 流程一起注释掉(不影响逻辑)
     const-string v6, "RikkaTune"
-
+    # 
     const-string v7, "addError called, sCompressInProgress="
-
-    sget-boolean v3, Lcom/vstory/hook/rikkahub/MainHook;->sCompressInProgress:Z
-
-    invoke-static {v3}, Ljava/lang/String;->valueOf(Z)Ljava/lang/String;
-
-    move-result-object v3
-
-    invoke-virtual {v7, v3}, Ljava/lang/String;->concat(Ljava/lang/String;)Ljava/lang/String;
-
-    move-result-object v3
-
+    # 
+    # sget-boolean v3, Lcom/vstory/hook/rikkahub/MainHook;->sCompressInProgress:Z
+    # 
+    # invoke-static {v3}, Ljava/lang/String;->valueOf(Z)Ljava/lang/String;
+    # 
+    # move-result-object v3
+    # 
+    # invoke-virtual {v7, v3}, Ljava/lang/String;->concat(Ljava/lang/String;)Ljava/lang/String;
+    # 
+    # move-result-object v3
+    # 
     invoke-static {v6, v3}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
 
     # 诊断: 打 title 值 (addError 签名: error, conversationId, title, solution → title=getArg(2))
-    const/4 v3, 0x2
-
-    invoke-interface {p1, v3}, Lio/github/libxposed/api/XposedInterface$Chain;->getArg(I)Ljava/lang/Object;
-
-    move-result-object v3
-
+    # const/4 v3, 0x2
+    # 
+    # invoke-interface {p1, v3}, Lio/github/libxposed/api/XposedInterface$Chain;->getArg(I)Ljava/lang/Object;
+    # 
+    # move-result-object v3
+    # 
     const-string v7, "addError title="
-
-    invoke-static {v3}, Ljava/lang/String;->valueOf(Ljava/lang/Object;)Ljava/lang/String;
-
-    move-result-object v3
-
-    invoke-virtual {v7, v3}, Ljava/lang/String;->concat(Ljava/lang/String;)Ljava/lang/String;
-
-    move-result-object v3
-
+    # 
+    # invoke-static {v3}, Ljava/lang/String;->valueOf(Ljava/lang/Object;)Ljava/lang/String;
+    # 
+    # move-result-object v3
+    # 
+    # invoke-virtual {v7, v3}, Ljava/lang/String;->concat(Ljava/lang/String;)Ljava/lang/String;
+    # 
+    # move-result-object v3
+    # 
     invoke-static {v6, v3}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
 
     # 📌 2026-09-02 修复: 压缩失败判定改为【只要 sCompressInProgress=true 就反馈失败】
@@ -141,7 +141,7 @@
     const-string v0, "RikkaTune"
 
     const-string v1, "compress FAILED, notify"
-
+    # 
     invoke-static {v0, v1}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
 
     # Context ctx = getContextFromThis(chain)
@@ -221,7 +221,7 @@
     const-string v0, "RikkaTune"
 
     const-string v1, "compress SUCCESS, notify"
-
+    # 
     invoke-static {v0, v1}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
 
     # Context ctx = getContextFromThis(chain)

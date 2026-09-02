@@ -1017,7 +1017,7 @@
     const-string v0, "RikkaTune"
 
     const-string v1, "vibrate: try Vibrator"
-
+    # 
     invoke-static {v0, v1}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
 
     # Vibrator vib = (Vibrator) ctx.getSystemService("vibrator")
@@ -1073,7 +1073,7 @@
     const-string v0, "RikkaTune"
 
     const-string v1, "vibrate: FAILED (no VIBRATE perm?)"
-
+    # 
     invoke-static {v0, v1}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
 
     # ============ 通知 ============
@@ -1172,7 +1172,7 @@
     const-string v1, "RikkaTune"
 
     const-string v2, "notify: channel created with vibration"
-
+    # 
     invoke-static {v1, v2}, Lcom/vstory/hook/rikkahub/Debug;->d(Ljava/lang/String;Ljava/lang/String;)V
 
     # Notification.Builder builder = new Notification.Builder(ctx, channelId)
