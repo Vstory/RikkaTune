@@ -1,48 +1,11 @@
 #!/bin/bash
-# TEMPLATE_VERSION=1.2.2    # 模板版本号(项目脚本对比用, 勿删)
-# SCRIPT_VERSION=1.2.2        # 脚本自身版本号(内容改动时 bump; 项目定制后可更高, 防覆盖)
-# ============================================================
-# libxposed API 102 模块通用构建脚本
-# 来源: 懒饭模块 + 钱迹模块 实战沉淀
-# ============================================================
-# 依赖: aapt, smali, zipalign, apksigner, keytool
-# 用法:
-#   ./build.sh                     # patch: versionCode+1, versionName 不变
-#   ./build.sh minor               # minor: 次版本+1, code+1
-#   ./build.sh major               # major: 主版本+1, code+1
-#   ./build.sh release             # 一键正式版: toggle off → build → 反编译验证 Debug.d=0 → toggle on
-#   ./build.sh release minor       # 一键正式版 + minor 版本号
-#   ./build.sh -q                  # 静默: 成功后不打印知识沉淀提示
-#   ./build.sh -k my.keystore patch   # 自定义 keystore 签名
-#
-# 环境变量 (或 -k/-a 参数):
-#   KEYSTORE_FILE / KEYSTORE_ALIAS / KEYSTORE_STORE_PASS / KEYSTORE_KEY_PASS
-#
-# 签名策略:
-#   - 默认 debug 签名 (CN=Android Debug): 任何人 clone 后无需证书即可构建安装
-#   - 自定义 keystore: 发布者用自己的私钥签名, 私钥永不公开
-#
-# 产物命名 (release/debug 标识):
-#   - 含未注释 Debug.d 调用 → Debug 版 → 产物名追加 _debug (如 RikkaTune_1.0.0(15)_debug.apk)
-#   - 注释/移除所有 Debug.d 调用 → 正式版 → 产物名追加 _release (如 RikkaTune_1.0.0(15)_release.apk)
-#   - 判断依据: 扫 src/smali/**/*.smali 是否有未注释的 invoke-static .*Debug;->d 调用
-# ============================================================
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# PROJECT-CUSTOM-BEGIN
-# 📌 新项目修改点 1: 模块名（输出 APK 文件名）— 项目定制段, 模板更新时自动保留
 MODULE_NAME="RikkaTune"
-# 📌 新项目修改点 2: 包名（必须与 smali 目录/AndroidManifest 一致）— 项目定制段
 PACKAGE_NAME="com.vstory.hook.rikkahub"
-# 📌 新项目修改点 1: 模块名（输出 APK 文件名）— 项目定制段, 模板更新时自动保留
-# 📌 新项目修改点 2: 包名（必须与 smali 目录/AndroidManifest 一致）— 项目定制段
-# 📌 新项目修改点 1: 模块名（输出 APK 文件名）— 项目定制段, 模板更新时自动保留
-# 📌 新项目修改点 2: 包名（必须与 smali 目录/AndroidManifest 一致）— 项目定制段
-# PROJECT-CUSTOM-END
-# 📌 新项目修改点 3: 初始版本
 INIT_VERSION_NAME="1.0.0"
 INIT_VERSION_CODE=1
 
@@ -55,7 +18,6 @@ ZIPALIGN="/usr/bin/zipalign"
 APKSIGNER="/usr/bin/apksigner"
 SMALI="/usr/bin/smali"
 
-# ---------- 解析参数 ----------
 CUSTOM_KEYSTORE=""
 BUMP="patch"
 RELEASE_MODE=0
@@ -74,10 +36,6 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-# ---------- 构建前环境检查（循环: 每次构建核对流程文件符合性）----------
-# 有 dev-project/check_build_env.sh 就跑；FAIL 时:
-#   -c 强制模式 → 退出
-#   自动模式   → 警告但继续（老项目兼容）
 if [ "$SKIP_CHECK" -eq 0 ] && [ -f "dev-project/check_build_env.sh" ]; then
     echo ""
     echo "🔍 构建前环境检查..."
@@ -94,10 +52,6 @@ if [ "$SKIP_CHECK" -eq 0 ] && [ -f "dev-project/check_build_env.sh" ]; then
     fi
 fi
 
-# ---------- 模板脚本版本自检（循环: 每次构建对比模板是否更新）----------
-# 项目 dev-project/check_template_update.sh 复制自知识库/scripts/;
-# 对比模板 TEMPLATE_VERSION vs 项目脚本记录版本:
-#   模板新 → 提示 (自动模式) / 自动 --update 同步 (-c 强制模式)
 if [ "$SKIP_CHECK" -eq 0 ] && [ -f "dev-project/check_template_update.sh" ]; then
     echo "🔍 模板脚本版本自检..."
     if bash dev-project/check_template_update.sh . >/dev/null 2>&1; then
@@ -112,13 +66,11 @@ if [ "$SKIP_CHECK" -eq 0 ] && [ -f "dev-project/check_template_update.sh" ]; the
     fi
 fi
 
-# ---------- 签名配置 (默认 debug) ----------
 KEYSTORE_FILE="${KEYSTORE_FILE:-$CUSTOM_KEYSTORE}"
 KEYSTORE_ALIAS="${KEYSTORE_ALIAS:-androiddebugkey}"
 KEYSTORE_STORE_PASS="${KEYSTORE_STORE_PASS:-android}"
 KEYSTORE_KEY_PASS="${KEYSTORE_KEY_PASS:-android}"
 
-# ---------- 版本管理 ----------
 VERSION_FILE="version.properties"
 if [ ! -f "$VERSION_FILE" ]; then
     printf 'versionName=%s\nversionCode=%s\n' "$INIT_VERSION_NAME" "$INIT_VERSION_CODE" > "$VERSION_FILE"
@@ -133,14 +85,7 @@ case "$BUMP" in
 esac
 printf 'versionName=%s\nversionCode=%s\n' "$VERSION_NAME" "$VERSION_CODE" > "$VERSION_FILE"
 
-# ---------- 产物命名标识 (release/debug) ----------
-# 规则: 扫 src/smali/**/*.smali 里是否有【未注释的】 invoke-static .*Debug;->d 调用
-#   - 存在(非注释行首是 invoke-static) → Debug 版 → 产物名追加 _debug
-#   - 全部注释/移除 → 正式版 → 产物名追加 _release
-# 产物名: dev-project/releases/${MODULE_NAME}_${VERSION_NAME}(${VERSION_CODE})_${release|debug}.apk
-# ⚠️ 判定时机: release 模式下需在 toggle off 之后（否则误判 _debug）
 
-# ---------- release 模式: 前置 toggle off (注释调试块) ----------
 if [ "$RELEASE_MODE" -eq 1 ]; then
     if [ ! -f "dev-project/toggle_debug.sh" ]; then
         echo "❌ release 模式需要 dev-project/toggle_debug.sh（调试切换脚本）"
@@ -152,7 +97,6 @@ if [ "$RELEASE_MODE" -eq 1 ]; then
     echo "[release] Debug.d 调用: $(grep -rE '^[[:space:]]*invoke-static[[:space:]]*\{.*Debug;->d' src/smali/ 2>/dev/null | wc -l) (应=0)"
 fi
 
-# ---------- 产物后缀判定 (release 模式已在 toggle off 后, 判定准确) ----------
 if grep -rqE '^[[:space:]]*invoke-static[[:space:]]*\{.*Debug;->d' src/smali/ 2>/dev/null; then
     DEBUG_SUFFIX="_debug"
     echo "检测: 含调试代码(Debug.d 调用仍在) → Debug 版 → 追加 _debug"
@@ -163,13 +107,8 @@ fi
 OUT="dev-project/releases/${MODULE_NAME}_${VERSION_NAME}(${VERSION_CODE})${DEBUG_SUFFIX}.apk"
 echo "构建版本: ${VERSION_NAME}(${VERSION_CODE})"
 
-# ---------- 写回 Manifest 版本号 (必须带 android: 前缀, 系统才能读到) ----------
 sed -i "s/android:versionCode=\"[0-9]*\"/android:versionCode=\"$VERSION_CODE\"/; s/android:versionName=\"[^\"]*\"/android:versionName=\"$VERSION_NAME\"/" AndroidManifest.xml
 
-# ---------- debug 版注入 android:debuggable=true (2026-09-02 UI 日志黑盒修复) ----------
-# 现象: UI 进程(控制面板)日志全被 ColorOS 过滤 -> 无法判断 onServiceBind/开关写入
-# 原因: APK 无 debuggable -> 非 debuggable app 自定义 Log.d 不输出 (framework 白名单 VRI 等除外)
-# 做法: debug 版在 <application> 注入 android:debuggable=true; release 版移除(不留)
 DEBUGGABLE_INJECTED=0
 if [ "$DEBUG_SUFFIX" = "_debug" ]; then
     if ! grep -q "android:debuggable=\"true\"" AndroidManifest.xml; then
@@ -183,9 +122,7 @@ else
         echo "[release] 移除 android:debuggable (正式版不留调试属性)"
     fi
 fi
-# ⚠️ 无论 debug/release 都保证 <application> 只有一个 android: 命名空间声明; 注入只在 <application 标签首
 
-# ---------- 编译 ----------
 echo "[1/5] smali 编译..."
 rm -rf build
 mkdir -p build/dex
@@ -198,13 +135,11 @@ mkdir -p build/clean
     -I "$ANDROID_JAR" -F build/base.apk
 cd build/clean
 unzip -o ../base.apk
-# api102 模块配置: META-INF/xposed/{java_init.list, module.prop, scope.list}
 cp -r ../../src/meta-inf/META-INF .
 cp ../dex/classes.dex .
 rm -rf META-INF/*.SF META-INF/*.RSA META-INF/*.MF 2>/dev/null || true
 cd ../..
 
-# ---------- 打包（resources.arsc 必须未压缩+对齐）----------
 echo "[3/5] 打包 (resources.arsc store 模式)..."
 mkdir -p dev-project/releases
 rm -f "$OUT" dev-project/releases/tmp_unsigned.apk dev-project/releases/aligned.apk
@@ -212,7 +147,6 @@ cd build/clean
 zip -r ../../dev-project/releases/tmp_unsigned.apk \
     AndroidManifest.xml resources.arsc classes.dex \
     META-INF/xposed/java_init.list META-INF/xposed/module.prop META-INF/xposed/scope.list
-# resources.arsc 重压为未压缩(store)
 zip -d ../../dev-project/releases/tmp_unsigned.apk resources.arsc
 zip -0 ../../dev-project/releases/tmp_unsigned.apk resources.arsc
 cd ../..
@@ -249,10 +183,6 @@ echo "[验证] 自动运行 verify.sh..."
     exit 1
 }
 
-# ---------- 反编译兜底验证（release: Debug.d=0 / debug: Debug.d>0）----------
-# v48 教训自动化: 构建后必须反编译产物确认形态正确, 防止误判/漏注释
-#   release 模式: Debug.d 必须=0（正式版干净）
-#   debug 模式:   Debug.d 必须>0（调试代码在）
 if [ "$RELEASE_MODE" -eq 1 ] || [ "$DEBUG_SUFFIX" = "_debug" ]; then
     MODE_LABEL="release"
     if [ "$DEBUG_SUFFIX" = "_debug" ]; then MODE_LABEL="debug"; fi
@@ -292,17 +222,14 @@ if [ "$RELEASE_MODE" -eq 1 ] || [ "$DEBUG_SUFFIX" = "_debug" ]; then
     fi
 fi
 
-# ---------- release 模式: 后置 toggle on (恢复调试块, 无损往返) ----------
 if [ "$RELEASE_MODE" -eq 1 ]; then
     echo ""
     echo "[release] 恢复调试块 (toggle on)..."
-    # toggle on 内部已自动编译验证: 失败会回滚 off 并退出非零 → build.sh set -e 拦截
     bash dev-project/toggle_debug.sh on
     echo "[release] 恢复后 Debug.d 调用: $(grep -rE '^[[:space:]]*invoke-static[[:space:]]*\{.*Debug;->d' src/smali/ 2>/dev/null | wc -l) (应>0)"
     echo "[release] 源码恢复验证: toggle on 已通过 smali 编译验证（源码可编译）"
 fi
 
-# ---------- 还原 manifest debuggable (源文件不留, 防污染 release 判定) ----------
 if [ "$DEBUGGABLE_INJECTED" -eq 1 ] && grep -q "android:debuggable=\"true\"" AndroidManifest.xml; then
     sed -i 's| android:debuggable="true"||' AndroidManifest.xml
     echo "[cleanup] 已还原 AndroidManifest.xml (移除 debuggable 注入)"

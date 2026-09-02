@@ -1,9 +1,12 @@
+package com.vstory.hook.rikkahub;
+
 import static android.util.Log.DEBUG;
 import static android.util.Log.INFO;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
@@ -43,7 +46,17 @@ public class MainHook extends XposedModule implements HookLogger {
     public void onModuleLoaded(XposedModuleInterface.ModuleLoadedParam param) {
         Debug.sLogger = this;
         log(INFO, TAG, "api102 module loaded");
-        Prefs.init(getRemotePreferences(Prefs.PREFS_GROUP));
+        SharedPreferences remotePrefs = getRemotePreferences(Prefs.PREFS_GROUP);
+        Prefs.init(remotePrefs);
+        // #ifdef DEBUG
+        // 监听开关变化 → 实时打印到 LSPosed 框架日志 (INFO 级)
+        if (BuildConfig.DEBUG) {
+            remotePrefs.registerOnSharedPreferenceChangeListener((prefs, key) -> {
+                boolean val = prefs.getBoolean(key, false);
+                log(INFO, TAG, "[switch] " + key + " = " + val);
+            });
+        }
+        // #endif
     }
 
     @Override
@@ -226,7 +239,16 @@ public class MainHook extends XposedModule implements HookLogger {
     private void restoreModuleState() {
         Debug.sLogger = this;
         sCompressInProgress = false;
-        Prefs.init(getRemotePreferences(Prefs.PREFS_GROUP));
+        SharedPreferences remotePrefs = getRemotePreferences(Prefs.PREFS_GROUP);
+        Prefs.init(remotePrefs);
+        // #ifdef DEBUG
+        if (BuildConfig.DEBUG) {
+            remotePrefs.registerOnSharedPreferenceChangeListener((prefs, key) -> {
+                boolean val = prefs.getBoolean(key, false);
+                log(INFO, TAG, "[switch] " + key + " = " + val);
+            });
+        }
+        // #endif
     }
 
     // ===== notifyCompressResult =====
@@ -268,7 +290,7 @@ public class MainHook extends XposedModule implements HookLogger {
 
     /** ① 盘古之白 hooker */
     static class PanguHooker implements XposedInterface.Hooker {
-        @Override public Object intercept(XposedInterface.Chain chain) {
+        @Override public Object intercept(XposedInterface.Chain chain) throws Throwable {
             Object raw = chain.proceed();
             if (raw == null) return null;
             if (!Prefs.isPanguEnabled()) return raw;
@@ -282,7 +304,7 @@ public class MainHook extends XposedModule implements HookLogger {
 
     /** ② ASR 声音 hooker */
     static class AsrSoundHooker implements XposedInterface.Hooker {
-        @Override public Object intercept(XposedInterface.Chain chain) {
+        @Override public Object intercept(XposedInterface.Chain chain) throws Throwable {
             Object arg1 = chain.getArg(1);
             if (!Prefs.isAsrSoundMuted()) return chain.proceed();
             if (!(arg1 instanceof Integer)) return chain.proceed();
@@ -294,7 +316,7 @@ public class MainHook extends XposedModule implements HookLogger {
 
     /** ③ 振动增强 hooker */
     static class HapticVibrateHooker implements XposedInterface.Hooker {
-        @Override public Object intercept(XposedInterface.Chain chain) {
+        @Override public Object intercept(XposedInterface.Chain chain) throws Throwable {
             Object arg0 = chain.getArg(0);
             if (!Prefs.isHapticBoost()) return chain.proceed();
             if (!(arg0 instanceof Integer)) return chain.proceed();
@@ -311,7 +333,7 @@ public class MainHook extends XposedModule implements HookLogger {
         private final int kind; // 1=开始 2=失败(addError) 3=成功(saveConversation)
         CompressFeedbackHooker(int kind) { this.kind = kind; }
 
-        @Override public Object intercept(XposedInterface.Chain chain) {
+        @Override public Object intercept(XposedInterface.Chain chain) throws Throwable {
             if (!Prefs.isCompressFeedback()) return chain.proceed();
 
             switch (kind) {

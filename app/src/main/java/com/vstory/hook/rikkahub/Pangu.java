@@ -1,3 +1,5 @@
+package com.vstory.hook.rikkahub;
+
 /**
  * 盘古之白：中文与英文/数字之间自动插入空格。
  * <p>

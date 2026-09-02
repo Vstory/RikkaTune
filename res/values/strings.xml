@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 模块描述：LSPosed 管理器模块列表显示。
-         ⚠️ android:description 属性类型是 reference，必须引用资源（不能写字面量字符串）！
-         替换为你的模块功能说明。 -->
+    
     <string name="module_description">RikkaHub UI 调校：中文排版盘古之白 / 消除语音提示音 / 语音振动增强 / 压缩对话反馈。管理器"打开"进入控制面板，开关即存即生效</string>
 </resources>

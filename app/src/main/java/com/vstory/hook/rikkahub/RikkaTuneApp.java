@@ -1,3 +1,5 @@
+package com.vstory.hook.rikkahub;
+
 import android.app.Application;
 
 import io.github.libxposed.service.XposedService;
