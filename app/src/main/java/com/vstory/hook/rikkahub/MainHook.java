@@ -48,11 +48,15 @@ public class MainHook extends XposedModule implements HookLogger {
         log(INFO, TAG, "api102 module loaded");
         SharedPreferences remotePrefs = getRemotePreferences(Prefs.PREFS_GROUP);
         Prefs.init(remotePrefs);
-        // 监听开关变化 → 打印到 LSPosed 框架日志 (INFO 级)
-        remotePrefs.registerOnSharedPreferenceChangeListener((prefs, key) -> {
-            boolean val = prefs.getBoolean(key, false);
-            log(INFO, TAG, "[switch] " + key + " = " + val);
-        });
+        // #ifdef DEBUG
+        // 监听开关变化 → 实时打印到 LSPosed 框架日志 (INFO 级)
+        if (Debug.DEBUG) {
+            remotePrefs.registerOnSharedPreferenceChangeListener((prefs, key) -> {
+                boolean val = prefs.getBoolean(key, false);
+                log(INFO, TAG, "[switch] " + key + " = " + val);
+            });
+        }
+        // #endif
     }
 
     @Override
@@ -237,10 +241,14 @@ public class MainHook extends XposedModule implements HookLogger {
         sCompressInProgress = false;
         SharedPreferences remotePrefs = getRemotePreferences(Prefs.PREFS_GROUP);
         Prefs.init(remotePrefs);
-        remotePrefs.registerOnSharedPreferenceChangeListener((prefs, key) -> {
-            boolean val = prefs.getBoolean(key, false);
-            log(INFO, TAG, "[switch] " + key + " = " + val);
-        });
+        // #ifdef DEBUG
+        if (Debug.DEBUG) {
+            remotePrefs.registerOnSharedPreferenceChangeListener((prefs, key) -> {
+                boolean val = prefs.getBoolean(key, false);
+                log(INFO, TAG, "[switch] " + key + " = " + val);
+            });
+        }
+        // #endif
     }
 
     // ===== notifyCompressResult =====
