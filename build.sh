@@ -81,7 +81,7 @@ printf 'versionName=%s\nversionCode=%s\n' "$VERSION_NAME" "$VERSION_CODE" > "$VE
 # 规则: 扫 src/smali/**/*.smali 里是否有【未注释的】 invoke-static .*Debug;->d 调用
 #   - 存在(非注释行首是 invoke-static) → Debug 版 → 产物名追加 _debug
 #   - 全部注释/移除 → 正式版 → 产物名追加 _release
-# 产物名: release/${MODULE_NAME}_${VERSION_NAME}(${VERSION_CODE})_${release|debug}.apk
+# 产物名: dev-project/releases/${MODULE_NAME}_${VERSION_NAME}(${VERSION_CODE})_${release|debug}.apk
 DEBUG_SUFFIX=""
 if grep -rqE '^[[:space:]]*invoke-static[[:space:]]*\{.*Debug;->d' src/smali/ 2>/dev/null; then
     DEBUG_SUFFIX="_debug"
@@ -91,7 +91,7 @@ else
     echo "检测: 正式版(Debug.d 调用已注释/移除) → 正式版 → 追加 _release"
 fi
 
-OUT="release/${MODULE_NAME}_${VERSION_NAME}(${VERSION_CODE})${DEBUG_SUFFIX}.apk"
+OUT="dev-project/releases/${MODULE_NAME}_${VERSION_NAME}(${VERSION_CODE})${DEBUG_SUFFIX}.apk"
 echo "构建版本: ${VERSION_NAME}(${VERSION_CODE})"
 
 # ---------- 写回 Manifest 版本号 (必须带 android: 前缀, 系统才能读到) ----------
@@ -118,19 +118,19 @@ cd ../..
 
 # ---------- 打包（resources.arsc 必须未压缩+对齐）----------
 echo "[3/5] 打包 (resources.arsc store 模式)..."
-mkdir -p release
-rm -f "$OUT" release/tmp_unsigned.apk release/aligned.apk
+mkdir -p dev-project/releases
+rm -f "$OUT" dev-project/releases/tmp_unsigned.apk dev-project/releases/aligned.apk
 cd build/clean
-zip -r ../../release/tmp_unsigned.apk \
+zip -r ../../dev-project/releases/tmp_unsigned.apk \
     AndroidManifest.xml resources.arsc classes.dex \
     META-INF/xposed/java_init.list META-INF/xposed/module.prop META-INF/xposed/scope.list
 # resources.arsc 重压为未压缩(store)
-zip -d ../../release/tmp_unsigned.apk resources.arsc
-zip -0 ../../release/tmp_unsigned.apk resources.arsc
+zip -d ../../dev-project/releases/tmp_unsigned.apk resources.arsc
+zip -0 ../../dev-project/releases/tmp_unsigned.apk resources.arsc
 cd ../..
 
 echo "[4/5] zipalign 对齐..."
-"$ZIPALIGN" -f 4 release/tmp_unsigned.apk release/aligned.apk
+"$ZIPALIGN" -f 4 dev-project/releases/tmp_unsigned.apk dev-project/releases/aligned.apk
 
 echo "[5/5] apksigner 签名..."
 if [ -n "$KEYSTORE_FILE" ] && [ -f "$KEYSTORE_FILE" ]; then
@@ -147,9 +147,9 @@ else
 fi
 "$APKSIGNER" sign --ks "$KEYSTORE_FILE" --ks-pass pass:"$KEYSTORE_STORE_PASS" \
     --key-pass pass:"$KEYSTORE_KEY_PASS" --ks-key-alias "$KEYSTORE_ALIAS" \
-    --out "$OUT" release/aligned.apk
+    --out "$OUT" dev-project/releases/aligned.apk
 
-rm -f release/tmp_unsigned.apk release/aligned.apk
+rm -f dev-project/releases/tmp_unsigned.apk dev-project/releases/aligned.apk
 echo ""
 echo "✅ 完成: $OUT"
 echo ""
@@ -180,7 +180,7 @@ echo "  zipalign -c 4 $OUT && apksigner verify $OUT"
 echo "  unzip -l $OUT | grep META-INF/xposed"
 echo ""
 echo "📝 构建成功知识沉淀提示："
-echo "  1. 本次版本改了什么（版本流水）→ 追加 $DEST/dev-project/CHANGELOG.md"
+echo "  1. 本次版本改了什么（版本流水）→ 追加 $SCRIPT_DIR/dev-project/CHANGELOG.md"
 echo "  2. 本次开发的知识点（混淆映射/hook点清单/项目踩坑）→ 及时写入"
 echo "     /workspace/知识库/dev-guide/项目开发记录/<包名>.md"
 echo "  3. 可通用化的知识 → 同步写入 dev-guide/实战/api102开发实战.md"

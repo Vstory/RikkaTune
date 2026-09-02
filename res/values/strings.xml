@@ -3,5 +3,5 @@
     <!-- 模块描述：LSPosed 管理器模块列表显示。
          ⚠️ android:description 属性类型是 reference，必须引用资源（不能写字面量字符串）！
          替换为你的模块功能说明。 -->
-    <string name="module_description">RikkaTune：UI 中文文案的中英文之间自动插入空格（盘古之白排版规则）</string>
+    <string name="module_description">UI 中文文案中英文间自动插入空格（盘古之白），语音输入提示音改为振动反馈</string>
 </resources>
