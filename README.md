@@ -29,6 +29,9 @@ RikkaHub 增强模块（LSPosed / Xposed）。
 3. 在 LSPosed 管理器中启用模块，勾选 RikkaHub 作用域
 4. 重启 RikkaHub 生效
 
+## 源代码
+[RikkaTune](https://github.com/Vstory/RikkaTune)
+
 ## 许可证
 
 本项目采用 **GNU AGPL-3.0** 许可证，与 RikkaHub 保持一致。详见 [LICENSE](LICENSE)。
