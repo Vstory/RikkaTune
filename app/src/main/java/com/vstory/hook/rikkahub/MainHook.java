@@ -12,26 +12,29 @@ import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.widget.Toast;
 
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 
 import io.github.libxposed.api.XposedInterface;
 import io.github.libxposed.api.XposedModule;
 import io.github.libxposed.api.XposedModuleInterface;
 
-/**
- * api102 模块入口（java_init.list 声明）。
- * <p>
- * 生命周期：onModuleLoaded → onPackageReady → installHooks
- * 热重载：  onHotReloading(返回true) → unhook 旧 handle → installHooks 重装 + restoreModuleState
- */
+
+
+
+
+
+
 public class MainHook extends XposedModule implements HookLogger {
 
     public static final String TAG = "RikkaTune";
 
     private ClassLoader mAppClassLoader;
 
-    /** 压缩对话进行中标志（CompressFeedbackHooker 跨类读写，必须 public） */
+
     public static boolean sCompressInProgress;
 
     private static int sHookOk;
@@ -40,7 +43,7 @@ public class MainHook extends XposedModule implements HookLogger {
 
     public MainHook() { super(); }
 
-    // ===== 生命周期 =====
+
 
     @Override
     public void onModuleLoaded(XposedModuleInterface.ModuleLoadedParam param) {
@@ -48,15 +51,15 @@ public class MainHook extends XposedModule implements HookLogger {
         log(INFO, TAG, "api102 module loaded");
         SharedPreferences remotePrefs = getRemotePreferences(Prefs.PREFS_GROUP);
         Prefs.init(remotePrefs);
-        // #ifdef DEBUG
-        // 监听开关变化 → 实时打印到 LSPosed 框架日志 (INFO 级)
+
+
         if (BuildConfig.DEBUG) {
             remotePrefs.registerOnSharedPreferenceChangeListener((prefs, key) -> {
                 boolean val = prefs.getBoolean(key, false);
                 log(INFO, TAG, "[switch] " + key + " = " + val);
             });
         }
-        // #endif
+
     }
 
     @Override
@@ -74,65 +77,91 @@ public class MainHook extends XposedModule implements HookLogger {
 
     @Override
     public void onHotReloaded(XposedModuleInterface.HotReloadedParam param) {
-        // unhook 旧 handle
-        ClassLoader cl = null;
+
+
+
+
+
+
+        ClassLoader cl = mAppClassLoader;
         if (param.getOldHookHandles() != null) {
             for (XposedInterface.HookHandle h : param.getOldHookHandles()) {
                 try {
-                    if (cl == null) cl = h.getExecutable().getDeclaringClass().getClassLoader();
+                    if (cl == null && !isPlatformClass(h.getExecutable().getDeclaringClass().getName())) {
+                        ClassLoader dcl = h.getExecutable().getDeclaringClass().getClassLoader();
+                        if (dcl != null) cl = dcl;
+                    }
                 } catch (Throwable ignored) {}
                 try { h.unhook(); } catch (Throwable ignored) {}
             }
         }
-        if (cl == null) cl = mAppClassLoader;
         if (cl == null) return;
         installHooks(cl);
         restoreModuleState();
         log(INFO, TAG, "hot reloaded, hooks reinstalled");
     }
 
-    // ===== installHooks =====
+
+
+
+
+    private static boolean isPlatformClass(String className) {
+        return className.startsWith("android.") || className.startsWith("java.")
+            || className.startsWith("javax.") || className.startsWith("sun.")
+            || className.startsWith("dalvik.") || className.startsWith("jdk.")
+            || className.startsWith("com.android.");
+    }
 
     private void installHooks(ClassLoader cl) {
         sHookDetail = new StringBuilder();
         sHookOk = sHookFail = 0;
 
-        // ① 盘古之白：Resources#getString(int)
-        hookMethodInt(cl, "android.content.res.Resources", "getString", new PanguHooker());
 
-        // ② ASR 声音：SoundEffectPlayer#play$default(SoundEffectPlayer, int)
         hookMethodObjIntExact(cl,
             "me.rerere.rikkahub.utils.SoundEffectPlayer",
             "play$default",
             "me.rerere.rikkahub.utils.SoundEffectPlayer",
             new AsrSoundHooker());
 
-        // ③ 振动增强：PlatformHapticFeedback#performHapticFeedback-CdsT49E(int)
+
         hookMethodInt(cl,
             "androidx.compose.ui.hapticfeedback.PlatformHapticFeedback",
             "performHapticFeedback-CdsT49E",
             new HapticVibrateHooker());
 
-        // ④ 压缩开始：ChatService#compressConversation-hUnOzRk
+
         hookMethodByName(cl, "me.rerere.rikkahub.service.ChatService",
             "compressConversation-hUnOzRk", new CompressFeedbackHooker(1));
 
-        // ⑤ 压缩失败：ChatService#addError
+
         hookMethodByName(cl, "me.rerere.rikkahub.service.ChatService",
             "addError", new CompressFeedbackHooker(2));
 
-        // ⑥ 压缩成功：ChatService#saveConversation
+
         hookMethodByName(cl, "me.rerere.rikkahub.service.ChatService",
             "saveConversation", new CompressFeedbackHooker(3));
+
+
+        hookMethodByName(cl, "me.rerere.rikkahub.ui.pages.chat.ChatListKt",
+            "MessageJumper", new NavButtonsHooker());
+
+
+        hookMethodByName(cl, "me.rerere.rikkahub.data.datastore.DisplaySetting",
+            "getShowMessageJumper", new ShowMessageJumperHooker());
+
+
+
+
+        hookMethodInt(cl, "android.content.res.Resources", "getString", new PanguHooker());
 
         log(INFO, TAG, "installHooks done: " + sHookOk + " OK / " + sHookFail + " FAIL / \n" + sHookDetail);
         sHookOk = sHookFail = 0;
         sHookDetail.setLength(0);
     }
 
-    // ===== hook 辅助方法 =====
 
-    /** hook 方法：getDeclaredMethod(clsName, methodName, Object.class) → this.hook(executable).intercept(hooker) */
+
+
     private void hookMethod(ClassLoader cl, String clsName, String methodName, XposedInterface.Hooker hooker) {
         try {
             Class<?> cls = cl.loadClass(clsName);
@@ -147,7 +176,7 @@ public class MainHook extends XposedModule implements HookLogger {
         }
     }
 
-    /** hook 方法：getDeclaredMethod(clsName, methodName, Object.class, int.class) */
+
     private void hookMethodObjInt(ClassLoader cl, String clsName, String methodName, XposedInterface.Hooker hooker) {
         try {
             Class<?> cls = cl.loadClass(clsName);
@@ -162,7 +191,7 @@ public class MainHook extends XposedModule implements HookLogger {
         }
     }
 
-    /** hook 方法：getDeclaredMethod(clsName, methodName, int.class) */
+
     private void hookMethodInt(ClassLoader cl, String clsName, String methodName, XposedInterface.Hooker hooker) {
         try {
             Class<?> cls = cl.loadClass(clsName);
@@ -177,10 +206,10 @@ public class MainHook extends XposedModule implements HookLogger {
         }
     }
 
-    /**
-     * hook 方法：精确匹配第一参类型（argClsName 加载的具体类型），getDeclaredMethod(clsName, methodName, argCls, int.class)
-     * 用于 SoundEffectPlayer.play$default 第一参是具体类型（非 Object）的场景。
-     */
+
+
+
+
     private void hookMethodObjIntExact(ClassLoader cl, String clsName, String methodName,
                                         String argClsName, XposedInterface.Hooker hooker) {
         try {
@@ -197,10 +226,10 @@ public class MainHook extends XposedModule implements HookLogger {
         }
     }
 
-    /**
-     * hook 方法：按方法名匹配（遍历 cls.getDeclaredMethods 找 name 相同的，取第一个）。
-     * 用于 suspend 函数（方法名含 mangled 后缀）或参数不确定的场景。
-     */
+
+
+
+
     private void hookMethodByName(ClassLoader cl, String clsName, String methodName, XposedInterface.Hooker hooker) {
         try {
             Class<?> cls = cl.loadClass(clsName);
@@ -222,7 +251,7 @@ public class MainHook extends XposedModule implements HookLogger {
         }
     }
 
-    // ===== HookLogger 实现 =====
+
 
     @Override
     public void logD(String tag, String msg) {
@@ -234,30 +263,30 @@ public class MainHook extends XposedModule implements HookLogger {
         log(DEBUG, tag, msg, tr);
     }
 
-    // ===== restoreModuleState =====
+
 
     private void restoreModuleState() {
         Debug.sLogger = this;
         sCompressInProgress = false;
         SharedPreferences remotePrefs = getRemotePreferences(Prefs.PREFS_GROUP);
         Prefs.init(remotePrefs);
-        // #ifdef DEBUG
+
         if (BuildConfig.DEBUG) {
             remotePrefs.registerOnSharedPreferenceChangeListener((prefs, key) -> {
                 boolean val = prefs.getBoolean(key, false);
                 log(INFO, TAG, "[switch] " + key + " = " + val);
             });
         }
-        // #endif
+
     }
 
-    // ===== notifyCompressResult =====
+
 
     public static void notifyCompressResult(Context ctx, boolean success) {
         if (ctx == null) return;
-        // Toast
+
         Toast.makeText(ctx, success ? "压缩成功" : "压缩失败", Toast.LENGTH_SHORT).show();
-        // 振动（尽力而为，无 VIBRATE 权限静默跳过）
+
         try {
             Vibrator vib = (Vibrator) ctx.getSystemService("vibrator");
             if (vib != null) {
@@ -266,7 +295,7 @@ public class MainHook extends XposedModule implements HookLogger {
                 vib.vibrate(VibrationEffect.createOneShot(ms, amp));
             }
         } catch (Throwable ignored) {}
-        // 通知（尽力而为）
+
         try {
             NotificationManager nm = (NotificationManager) ctx.getSystemService("notification");
             if (nm != null) {
@@ -286,9 +315,9 @@ public class MainHook extends XposedModule implements HookLogger {
         } catch (Throwable ignored) {}
     }
 
-    // ===== 4 个 Hooker 内部类 =====
 
-    /** ① 盘古之白 hooker */
+
+
     static class PanguHooker implements XposedInterface.Hooker {
         @Override public Object intercept(XposedInterface.Chain chain) throws Throwable {
             Object raw = chain.proceed();
@@ -302,19 +331,19 @@ public class MainHook extends XposedModule implements HookLogger {
         }
     }
 
-    /** ② ASR 声音 hooker */
+
     static class AsrSoundHooker implements XposedInterface.Hooker {
         @Override public Object intercept(XposedInterface.Chain chain) throws Throwable {
             Object arg1 = chain.getArg(1);
             if (!Prefs.isAsrSoundMuted()) return chain.proceed();
             if (!(arg1 instanceof Integer)) return chain.proceed();
             int rid = ((Integer) arg1).intValue();
-            if (rid == 0x7f120000 || rid == 0x7f120001) return null; // asr_start/stop 吞掉
+            if (rid == 0x7f120000 || rid == 0x7f120001) return null;
             return chain.proceed();
         }
     }
 
-    /** ③ 振动增强 hooker */
+
     static class HapticVibrateHooker implements XposedInterface.Hooker {
         @Override public Object intercept(XposedInterface.Chain chain) throws Throwable {
             Object arg0 = chain.getArg(0);
@@ -322,27 +351,27 @@ public class MainHook extends XposedModule implements HookLogger {
             if (!(arg0 instanceof Integer)) return chain.proceed();
             int htype = ((Integer) arg0).intValue();
             if (htype == 0x17 || htype == 0xd) {
-                return chain.proceed(new Object[]{ Integer.valueOf(0x3) }); // 换强振
+                return chain.proceed(new Object[]{ Integer.valueOf(0x3) });
             }
             return chain.proceed();
         }
     }
 
-    /** ④⑤⑥ 压缩反馈 hooker（三用途，kind 由构造传入） */
+
     static class CompressFeedbackHooker implements XposedInterface.Hooker {
-        private final int kind; // 1=开始 2=失败(addError) 3=成功(saveConversation)
+        private final int kind;
         CompressFeedbackHooker(int kind) { this.kind = kind; }
 
         @Override public Object intercept(XposedInterface.Chain chain) throws Throwable {
             if (!Prefs.isCompressFeedback()) return chain.proceed();
 
             switch (kind) {
-                case 1: // compressConversation 入口
+                case 1:
                     Debug.d(TAG, "compress start, flag=true");
                     sCompressInProgress = true;
                     break;
 
-                case 2: // addError
+                case 2:
                     if (sCompressInProgress) {
                         Debug.d(TAG, "compress FAILED, notify");
                         Context ctx = getContextFromThis(chain);
@@ -351,9 +380,9 @@ public class MainHook extends XposedModule implements HookLogger {
                     }
                     break;
 
-                case 3: // saveConversation
+                case 3:
                     if (sCompressInProgress) {
-                        // 区分：发送消息也会 saveConversation，只有栈里有 compressConversation 才是压缩收尾
+
                         StackTraceElement[] stack = Thread.currentThread().getStackTrace();
                         boolean fromCompress = false;
                         for (StackTraceElement ste : stack) {
@@ -374,7 +403,7 @@ public class MainHook extends XposedModule implements HookLogger {
             return chain.proceed();
         }
 
-        /** 从 hook 的 this（ChatService 实例）反射读 context 字段（Application） */
+
         private static Context getContextFromThis(XposedInterface.Chain chain) {
             try {
                 Object thiz = chain.getThisObject();
@@ -386,6 +415,219 @@ public class MainHook extends XposedModule implements HookLogger {
             } catch (Throwable e) {
                 return null;
             }
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    static class NavButtonsHooker implements XposedInterface.Hooker {
+
+
+        private static final int THRESHOLD_MIN = 1;
+        private static final int THRESHOLD_MAX = 20;
+
+
+        private static final long WINDOW_MS = 1500;
+
+
+        private static Method sMFirstIndex;
+        private static Method sMFirstOffset;
+
+
+
+        static volatile Boolean sShowMessageJumper;
+
+        private static WeakReference<Object> sLastState;
+
+        private static long sLastShowMs;
+
+        private static int sBaseIndex = Integer.MIN_VALUE;
+        private static int sBaseOffset;
+
+
+        private static long sCfgAt;
+        private static int sCfgMode = -1;
+        private static int sCfgThresh;
+
+
+        private static boolean sParamLogged;
+        private static int sLastResult = -1;
+
+
+        private static final int R_HIDE = 0;
+        private static final int R_SHOW = 1;
+        private static final int R_SUPPRESS = 2;
+        private static final int R_ERR = 3;
+        private static final int R_ALWAYS = 4;
+
+        private static String resultName(int r) {
+            switch (r) {
+                case R_HIDE: return "隐藏放行";
+                case R_SHOW: return "显示放行";
+                case R_SUPPRESS: return "抑制轻滑";
+                case R_ERR: return "异常兜底";
+                case R_ALWAYS: return "常驻显示";
+                default: return "?";
+            }
+        }
+
+
+        private static void logResult(int result, String detail) {
+            if (result == sLastResult) return;
+            sLastResult = result;
+            Debug.d(TAG, "NavBtn -> " + resultName(result) + (detail == null ? "" : " " + detail));
+        }
+
+
+        private static void logParamsOnce(XposedInterface.Chain chain) {
+            if (sParamLogged) return;
+            sParamLogged = true;
+            try {
+                StringBuilder sb = new StringBuilder("NavBtn ARGS n=").append(chain.getArgs().size());
+                for (int i = 0; i < chain.getArgs().size(); i++) {
+                    Object a = chain.getArgs().get(i);
+                    sb.append(" [").append(i).append("]=")
+                      .append(a == null ? "null" : a.getClass().getSimpleName());
+                }
+                Debug.d(TAG, sb.toString());
+            } catch (Throwable ignored) {}
+        }
+
+        private static void refreshCfg() {
+            long now = System.currentTimeMillis();
+            if (now - sCfgAt > 300) {
+                int mode = Prefs.navMode();
+                int thresh = Prefs.navSensitivity();
+                if (mode != sCfgMode || thresh != sCfgThresh) {
+                    Debug.d(TAG, "NavBtn cfg: mode=" + mode + " thresh=" + thresh + "条");
+                }
+                sCfgMode = mode;
+                sCfgThresh = thresh;
+                sCfgAt = now;
+            }
+        }
+
+        private static synchronized void ensureMethods(Class<?> cls) throws Throwable {
+            if (sMFirstIndex != null && sMFirstIndex.getDeclaringClass() == cls) return;
+            sMFirstIndex = cls.getMethod("getFirstVisibleItemIndex");
+            sMFirstOffset = cls.getMethod("getFirstVisibleItemScrollOffset");
+            sMFirstIndex.setAccessible(true);
+            sMFirstOffset.setAccessible(true);
+        }
+
+        @Override public Object intercept(XposedInterface.Chain chain) throws Throwable {
+            logParamsOnce(chain);
+            refreshCfg();
+            int mode = sCfgMode;
+            if (mode == 2) return chain.proceed();
+
+            boolean show = chain.getArg(0) instanceof Boolean && (Boolean) chain.getArg(0);
+
+            if (mode == 1) {
+
+                if (Boolean.FALSE.equals(sShowMessageJumper)) {
+                    logResult(R_HIDE, "常驻但 RikkaHub 开关已关");
+                    return chain.proceed();
+                }
+                logResult(R_ALWAYS, null);
+                return chain.proceed(withShow(chain, true));
+            }
+
+            if (!show) {
+                logResult(R_HIDE, null);
+                return chain.proceed();
+            }
+
+            Object state = chain.getArg(3);
+            if (state == null) {
+                logResult(R_ERR, "state=null");
+                return chain.proceed();
+            }
+            try {
+                ensureMethods(state.getClass());
+
+
+                Object prev = sLastState == null ? null : sLastState.get();
+                if (prev != state) {
+                    sLastState = new WeakReference<Object>(state);
+                    sBaseIndex = Integer.MIN_VALUE;
+                    sBaseOffset = 0;
+                    sLastShowMs = 0;
+                }
+
+                int idx = ((Integer) sMFirstIndex.invoke(state)).intValue();
+                int off = ((Integer) sMFirstOffset.invoke(state)).intValue();
+                long now = System.currentTimeMillis();
+                int thresh = Math.max(THRESHOLD_MIN, Math.min(THRESHOLD_MAX, sCfgThresh));
+
+
+                if (sLastShowMs != 0 && (now - sLastShowMs) <= WINDOW_MS) {
+                    sBaseIndex = idx; sBaseOffset = off;
+                    logResult(R_SHOW, "窗口内保持 idx=" + idx);
+                    return chain.proceed(withShow(chain, true));
+                }
+
+                if (sBaseIndex == Integer.MIN_VALUE) {
+                    sBaseIndex = idx; sBaseOffset = off; sLastShowMs = now;
+                    logResult(R_SHOW, "首帧建档 idx=" + idx);
+                    return chain.proceed(withShow(chain, true));
+                }
+
+
+
+                int idxDelta = Math.abs(idx - sBaseIndex);
+                int offDelta = Math.abs(off - sBaseOffset);
+                boolean distOk = idxDelta >= thresh
+                    || (idxDelta == 0 && offDelta >= thresh * 160);
+                if (!distOk) {
+                    sBaseIndex = idx; sBaseOffset = off;
+                    logResult(R_SUPPRESS, "idxΔ=" + idxDelta
+                        + " offΔ=" + offDelta + " thr=≥" + thresh + "条");
+                    return chain.proceed(withShow(chain, false));
+                }
+                sBaseIndex = idx; sBaseOffset = off; sLastShowMs = now;
+                logResult(R_SHOW, "门槛通过 idx=" + idx + " idxΔ=" + idxDelta);
+                return chain.proceed(withShow(chain, true));
+            } catch (Throwable e) {
+                logResult(R_ERR, String.valueOf(e));
+                return chain.proceed();
+            }
+        }
+
+
+        private static Object[] withShow(XposedInterface.Chain chain, boolean show) {
+            List<Object> args = new ArrayList<>(chain.getArgs());
+            args.set(0, Boolean.valueOf(show));
+            return args.toArray();
+        }
+    }
+
+
+
+
+
+
+
+
+
+    static class ShowMessageJumperHooker implements XposedInterface.Hooker {
+        @Override public Object intercept(XposedInterface.Chain chain) throws Throwable {
+            Object r = chain.proceed();
+            NavButtonsHooker.sShowMessageJumper =
+                Boolean.valueOf(r instanceof Boolean && (Boolean) r);
+            return r;
         }
     }
 }

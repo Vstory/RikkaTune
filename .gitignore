@@ -1,14 +1,12 @@
-# ==== 构建产物 / 中间文件（不进仓库）====
 build/
 .gradle/
 dev-project/releases/
 *.idsig
 
-# ==== token 密钥（绝不进仓库）====
 dev-project/tokens
 
-# ==== 源 APK 解包分析材料（RikkaHub 源码副本，体积大，非本项目代码，不进仓库）====
 rikkahub源码/
 
-# ==== 开发记录 / 日志箱（项目本地开发资料，不进公开仓库）====
 dev-project/
+
+.deving

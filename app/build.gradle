@@ -18,8 +18,8 @@ android {
         applicationId = "com.vstory.hook.rikkahub"
         minSdk = 26
         targetSdk = 37
-        versionName = "2.0.0"
-        versionCode = 70
+        versionName = "2.1.0"
+        versionCode = 75
     }
     buildTypes {
         all { signingConfig = signingConfigs.getByName("universal") }

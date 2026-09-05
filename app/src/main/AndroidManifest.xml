@@ -17,7 +17,7 @@
             </intent-filter>
         </activity>
 
-        <!-- libxposed service: 框架往模块进程发 binder 必须声明 -->
+        
         <provider
             android:name="io.github.libxposed.service.XposedProvider"
             android:authorities="${applicationId}.XposedService"
