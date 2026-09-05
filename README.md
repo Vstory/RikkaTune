@@ -19,7 +19,7 @@ RikkaHub 增强模块（LSPosed / Xposed）。
 ## 版本
 
 - 当前版本：`v2.1.0`（versionCode 75）
-- Xposed API：v96
+- Xposed API：102
 - minSdkVersion：31（Android 12）
 - targetSdkVersion：35
 
