@@ -22,19 +22,19 @@ import io.github.libxposed.api.XposedInterface;
 import io.github.libxposed.api.XposedModule;
 import io.github.libxposed.api.XposedModuleInterface;
 
-
-
-
-
-
-
+/**
+ * api102 模块入口（java_init.list 声明）。
+ * <p>
+ * 生命周期：onModuleLoaded → onPackageReady → installHooks
+ * 热重载：  onHotReloading(返回true) → unhook 旧 handle → installHooks 重装 + restoreModuleState
+ */
 public class MainHook extends XposedModule implements HookLogger {
 
     public static final String TAG = "RikkaTune";
 
     private ClassLoader mAppClassLoader;
 
-
+    /** 压缩对话进行中标志（CompressFeedbackHooker 跨类读写，必须 public） */
     public static boolean sCompressInProgress;
 
     private static int sHookOk;
@@ -43,7 +43,7 @@ public class MainHook extends XposedModule implements HookLogger {
 
     public MainHook() { super(); }
 
-
+    // ===== 生命周期 =====
 
     @Override
     public void onModuleLoaded(XposedModuleInterface.ModuleLoadedParam param) {
@@ -51,15 +51,15 @@ public class MainHook extends XposedModule implements HookLogger {
         log(INFO, TAG, "api102 module loaded");
         SharedPreferences remotePrefs = getRemotePreferences(Prefs.PREFS_GROUP);
         Prefs.init(remotePrefs);
-
-
+        // #ifdef DEBUG
+        // 监听开关变化 → 实时打印到 LSPosed 框架日志 (INFO 级)
         if (BuildConfig.DEBUG) {
             remotePrefs.registerOnSharedPreferenceChangeListener((prefs, key) -> {
                 boolean val = prefs.getBoolean(key, false);
                 log(INFO, TAG, "[switch] " + key + " = " + val);
             });
         }
-
+        // #endif
     }
 
     @Override
@@ -77,12 +77,12 @@ public class MainHook extends XposedModule implements HookLogger {
 
     @Override
     public void onHotReloaded(XposedModuleInterface.HotReloadedParam param) {
-
-
-
-
-
-
+        // 宿主 app classloader（onPackageReady 时保存；热重载进程未重启，它仍有效）
+        // ⚠️ 旧 handle 兜底取 classloader 必须跳过平台类（android.*/java.* 等由 boot/platform loader
+        //    加载，如 Resources；其 getClassLoader() 在 ART 上非 null → 误当宿主 cl → 宿主类全
+        //    ClassNotFound = 1 OK/7 FAIL）。2026-09-05 实锤：ColorOS/ART 的 Resources loader 非 null，
+        //    只判 null 挡不住（v71 修法失效），须按类名前缀硬判。宿主类（me.rerere.*/androidx.* 打进 APK）
+        //    的 loader 才是宿主 cl，可兜底。
         ClassLoader cl = mAppClassLoader;
         if (param.getOldHookHandles() != null) {
             for (XposedInterface.HookHandle h : param.getOldHookHandles()) {
@@ -101,10 +101,10 @@ public class MainHook extends XposedModule implements HookLogger {
         log(INFO, TAG, "hot reloaded, hooks reinstalled");
     }
 
+    // ===== installHooks =====
 
-
-
-
+    // 平台/框架类（boot/platform loader 加载，如 android.*/java.*/com.android.*）→ 不是宿主类。
+    // androidx.* 不打进系统、随宿主 APK 分发（loader=宿主），故不在此列。
     private static boolean isPlatformClass(String className) {
         return className.startsWith("android.") || className.startsWith("java.")
             || className.startsWith("javax.") || className.startsWith("sun.")
@@ -116,42 +116,42 @@ public class MainHook extends XposedModule implements HookLogger {
         sHookDetail = new StringBuilder();
         sHookOk = sHookFail = 0;
 
-
+        // ① ASR 声音：SoundEffectPlayer#play$default(SoundEffectPlayer, int)
         hookMethodObjIntExact(cl,
             "me.rerere.rikkahub.utils.SoundEffectPlayer",
             "play$default",
             "me.rerere.rikkahub.utils.SoundEffectPlayer",
             new AsrSoundHooker());
 
-
+        // ② 振动增强：PlatformHapticFeedback#performHapticFeedback-CdsT49E(int)
         hookMethodInt(cl,
             "androidx.compose.ui.hapticfeedback.PlatformHapticFeedback",
             "performHapticFeedback-CdsT49E",
             new HapticVibrateHooker());
 
-
+        // ③ 压缩开始：ChatService#compressConversation-hUnOzRk
         hookMethodByName(cl, "me.rerere.rikkahub.service.ChatService",
             "compressConversation-hUnOzRk", new CompressFeedbackHooker(1));
 
-
+        // ④ 压缩失败：ChatService#addError
         hookMethodByName(cl, "me.rerere.rikkahub.service.ChatService",
             "addError", new CompressFeedbackHooker(2));
 
-
+        // ⑤ 压缩成功：ChatService#saveConversation
         hookMethodByName(cl, "me.rerere.rikkahub.service.ChatService",
             "saveConversation", new CompressFeedbackHooker(3));
 
-
+        // ⑥ 滚动导航按钮：ChatListKt#MessageJumper（Kelivo 式显隐：位移门槛+模式）
         hookMethodByName(cl, "me.rerere.rikkahub.ui.pages.chat.ChatListKt",
             "MessageJumper", new NavButtonsHooker());
 
-
+        // ⑦ 缓存 RikkaHub「消息导航按钮」开关真值（NavButtonsHooker 常驻模式尊重总开关用）
         hookMethodByName(cl, "me.rerere.rikkahub.data.datastore.DisplaySetting",
             "getShowMessageJumper", new ShowMessageJumperHooker());
 
-
-
-
+        // ⑧ 盘古之白：Resources#getString(int)
+        //    （宿主类 hook 全在前、框架类兜底放最后：热重载时 oldHandles[0] 是宿主类，
+        //      框架类 Resources 的 declaringClass loader 是平台 loader，会污染宿主 cl 推断 → 2026-09-05）
         hookMethodInt(cl, "android.content.res.Resources", "getString", new PanguHooker());
 
         log(INFO, TAG, "installHooks done: " + sHookOk + " OK / " + sHookFail + " FAIL / \n" + sHookDetail);
@@ -159,9 +159,9 @@ public class MainHook extends XposedModule implements HookLogger {
         sHookDetail.setLength(0);
     }
 
+    // ===== hook 辅助方法 =====
 
-
-
+    /** hook 方法：getDeclaredMethod(clsName, methodName, Object.class) → this.hook(executable).intercept(hooker) */
     private void hookMethod(ClassLoader cl, String clsName, String methodName, XposedInterface.Hooker hooker) {
         try {
             Class<?> cls = cl.loadClass(clsName);
@@ -176,7 +176,7 @@ public class MainHook extends XposedModule implements HookLogger {
         }
     }
 
-
+    /** hook 方法：getDeclaredMethod(clsName, methodName, Object.class, int.class) */
     private void hookMethodObjInt(ClassLoader cl, String clsName, String methodName, XposedInterface.Hooker hooker) {
         try {
             Class<?> cls = cl.loadClass(clsName);
@@ -191,7 +191,7 @@ public class MainHook extends XposedModule implements HookLogger {
         }
     }
 
-
+    /** hook 方法：getDeclaredMethod(clsName, methodName, int.class) */
     private void hookMethodInt(ClassLoader cl, String clsName, String methodName, XposedInterface.Hooker hooker) {
         try {
             Class<?> cls = cl.loadClass(clsName);
@@ -206,10 +206,10 @@ public class MainHook extends XposedModule implements HookLogger {
         }
     }
 
-
-
-
-
+    /**
+     * hook 方法：精确匹配第一参类型（argClsName 加载的具体类型），getDeclaredMethod(clsName, methodName, argCls, int.class)
+     * 用于 SoundEffectPlayer.play$default 第一参是具体类型（非 Object）的场景。
+     */
     private void hookMethodObjIntExact(ClassLoader cl, String clsName, String methodName,
                                         String argClsName, XposedInterface.Hooker hooker) {
         try {
@@ -226,10 +226,10 @@ public class MainHook extends XposedModule implements HookLogger {
         }
     }
 
-
-
-
-
+    /**
+     * hook 方法：按方法名匹配（遍历 cls.getDeclaredMethods 找 name 相同的，取第一个）。
+     * 用于 suspend 函数（方法名含 mangled 后缀）或参数不确定的场景。
+     */
     private void hookMethodByName(ClassLoader cl, String clsName, String methodName, XposedInterface.Hooker hooker) {
         try {
             Class<?> cls = cl.loadClass(clsName);
@@ -251,7 +251,7 @@ public class MainHook extends XposedModule implements HookLogger {
         }
     }
 
-
+    // ===== HookLogger 实现 =====
 
     @Override
     public void logD(String tag, String msg) {
@@ -263,30 +263,30 @@ public class MainHook extends XposedModule implements HookLogger {
         log(DEBUG, tag, msg, tr);
     }
 
-
+    // ===== restoreModuleState =====
 
     private void restoreModuleState() {
         Debug.sLogger = this;
         sCompressInProgress = false;
         SharedPreferences remotePrefs = getRemotePreferences(Prefs.PREFS_GROUP);
         Prefs.init(remotePrefs);
-
+        // #ifdef DEBUG
         if (BuildConfig.DEBUG) {
             remotePrefs.registerOnSharedPreferenceChangeListener((prefs, key) -> {
                 boolean val = prefs.getBoolean(key, false);
                 log(INFO, TAG, "[switch] " + key + " = " + val);
             });
         }
-
+        // #endif
     }
 
-
+    // ===== notifyCompressResult =====
 
     public static void notifyCompressResult(Context ctx, boolean success) {
         if (ctx == null) return;
-
+        // Toast
         Toast.makeText(ctx, success ? "压缩成功" : "压缩失败", Toast.LENGTH_SHORT).show();
-
+        // 振动（尽力而为，无 VIBRATE 权限静默跳过）
         try {
             Vibrator vib = (Vibrator) ctx.getSystemService("vibrator");
             if (vib != null) {
@@ -295,7 +295,7 @@ public class MainHook extends XposedModule implements HookLogger {
                 vib.vibrate(VibrationEffect.createOneShot(ms, amp));
             }
         } catch (Throwable ignored) {}
-
+        // 通知（尽力而为）
         try {
             NotificationManager nm = (NotificationManager) ctx.getSystemService("notification");
             if (nm != null) {
@@ -315,9 +315,9 @@ public class MainHook extends XposedModule implements HookLogger {
         } catch (Throwable ignored) {}
     }
 
+    // ===== 4 个 Hooker 内部类 =====
 
-
-
+    /** ① 盘古之白 hooker */
     static class PanguHooker implements XposedInterface.Hooker {
         @Override public Object intercept(XposedInterface.Chain chain) throws Throwable {
             Object raw = chain.proceed();
@@ -331,19 +331,19 @@ public class MainHook extends XposedModule implements HookLogger {
         }
     }
 
-
+    /** ② ASR 声音 hooker */
     static class AsrSoundHooker implements XposedInterface.Hooker {
         @Override public Object intercept(XposedInterface.Chain chain) throws Throwable {
             Object arg1 = chain.getArg(1);
             if (!Prefs.isAsrSoundMuted()) return chain.proceed();
             if (!(arg1 instanceof Integer)) return chain.proceed();
             int rid = ((Integer) arg1).intValue();
-            if (rid == 0x7f120000 || rid == 0x7f120001) return null;
+            if (rid == 0x7f120000 || rid == 0x7f120001) return null; // asr_start/stop 吞掉
             return chain.proceed();
         }
     }
 
-
+    /** ③ 振动增强 hooker */
     static class HapticVibrateHooker implements XposedInterface.Hooker {
         @Override public Object intercept(XposedInterface.Chain chain) throws Throwable {
             Object arg0 = chain.getArg(0);
@@ -351,27 +351,27 @@ public class MainHook extends XposedModule implements HookLogger {
             if (!(arg0 instanceof Integer)) return chain.proceed();
             int htype = ((Integer) arg0).intValue();
             if (htype == 0x17 || htype == 0xd) {
-                return chain.proceed(new Object[]{ Integer.valueOf(0x3) });
+                return chain.proceed(new Object[]{ Integer.valueOf(0x3) }); // 换强振
             }
             return chain.proceed();
         }
     }
 
-
+    /** ④⑤⑥ 压缩反馈 hooker（三用途，kind 由构造传入） */
     static class CompressFeedbackHooker implements XposedInterface.Hooker {
-        private final int kind;
+        private final int kind; // 1=开始 2=失败(addError) 3=成功(saveConversation)
         CompressFeedbackHooker(int kind) { this.kind = kind; }
 
         @Override public Object intercept(XposedInterface.Chain chain) throws Throwable {
             if (!Prefs.isCompressFeedback()) return chain.proceed();
 
             switch (kind) {
-                case 1:
+                case 1: // compressConversation 入口
                     Debug.d(TAG, "compress start, flag=true");
                     sCompressInProgress = true;
                     break;
 
-                case 2:
+                case 2: // addError
                     if (sCompressInProgress) {
                         Debug.d(TAG, "compress FAILED, notify");
                         Context ctx = getContextFromThis(chain);
@@ -380,9 +380,9 @@ public class MainHook extends XposedModule implements HookLogger {
                     }
                     break;
 
-                case 3:
+                case 3: // saveConversation
                     if (sCompressInProgress) {
-
+                        // 区分：发送消息也会 saveConversation，只有栈里有 compressConversation 才是压缩收尾
                         StackTraceElement[] stack = Thread.currentThread().getStackTrace();
                         boolean fromCompress = false;
                         for (StackTraceElement ste : stack) {
@@ -403,7 +403,7 @@ public class MainHook extends XposedModule implements HookLogger {
             return chain.proceed();
         }
 
-
+        /** 从 hook 的 this（ChatService 实例）反射读 context 字段（Application） */
         private static Context getContextFromThis(XposedInterface.Chain chain) {
             try {
                 Object thiz = chain.getThisObject();
@@ -418,59 +418,59 @@ public class MainHook extends XposedModule implements HookLogger {
         }
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    /**
+     * ⑦ 滚动导航按钮控制 hooker（Kelivo 式显隐：位移门槛抑制轻滑 + 显示窗口内保持）。
+     * <p>
+     * hook 点: ChatListKt#MessageJumper(ZZ,CoroutineScope,LazyListState,GapComposer,I)，
+     * 参数 arg0 = show（显示链最末端收口）。原生行为：任何滚动停止后显示约 1.5s（isRecentScroll delay）。
+     * RikkaHub 自身「消息导航按钮」设置 = 总开关（原生 show=false 一律放行，尊重开关）。
+     * <p>
+     * 模式: 0=智能(默认) / 1=常驻(尊重 RikkaHub 总开关, 真值由 ShowMessageJumperHooker 缓存) / 2=原版零干预。
+     * 智能 = 位移门槛（近似 Kelivo"真实用户滚动"过滤）：距上次放行超过显示窗口后，
+     * 滚动位移不足门槛（轻滑/惯性尾段）→ 抑制不显示；连续滚动（窗口内）→ 保持显示不闪断。
+     * 抑制不更新"放行窗口"，保证连续轻滑持续被抑制；基准在放行/抑制时都更新，防位移累计误判。
+     * ⚠️ 不做贴底/贴顶整组抑制：RikkaHub 4 键一体，滚到底时"回顶/上一条"仍需要；
+     *    Kelivo 的 near-bottom 抑制的是其独立"回底"钮（showJumpToBottom 单独控制），结构不同无法照搬。
+     */
     static class NavButtonsHooker implements XposedInterface.Hooker {
 
-
+        /** 滚动显示阈值范围（无级，用户滑块 1..20 条） */
         private static final int THRESHOLD_MIN = 1;
         private static final int THRESHOLD_MAX = 20;
 
-
+        /** 连续会话窗口 ms：距上次放行 ≤ 此值视为连续翻页，位移不足也放行（避免闪断） */
         private static final long WINDOW_MS = 1500;
 
-
+        // ---- 反射（宿主 LazyListState，懒加载缓存）----
         private static Method sMFirstIndex;
         private static Method sMFirstOffset;
 
-
-
+        // ---- 状态（UI 主线程串行访问）----
+        /** RikkaHub「消息导航按钮」开关真值缓存（由 ShowMessageJumperHooker 每次 getter 读取时更新；null=未知） */
         static volatile Boolean sShowMessageJumper;
-
+        /** 最近一次处理的 LazyListState 实例（弱引用防泄漏）：换会话/页面 → 重置基准防串扰 */
         private static WeakReference<Object> sLastState;
-
+        /** 上次【放行显示】时刻：仅放行更新（抑制不更新），是"连续滚动保持显示"窗口的依据 */
         private static long sLastShowMs;
-
+        /** 位移基准（放行与抑制都更新：抑制后从新位置起算，防连续轻滑累计位移误判） */
         private static int sBaseIndex = Integer.MIN_VALUE;
         private static int sBaseOffset;
 
-
+        // ---- 配置节流（MessageJumper 重组频繁，避免高频跨进程读 prefs）----
         private static long sCfgAt;
-        private static int sCfgMode = -1;
+        private static int sCfgMode = -1;   // -1 强制首帧打 cfg
         private static int sCfgThresh;
 
+        // ---- 观测（一次性/状态翻转驱动日志，防每帧重组刷屏）----
+        private static boolean sParamLogged; // 参数布局自检是否已打
+        private static int sLastResult = -1; // 上次判定结果
 
-        private static boolean sParamLogged;
-        private static int sLastResult = -1;
-
-
-        private static final int R_HIDE = 0;
-        private static final int R_SHOW = 1;
-        private static final int R_SUPPRESS = 2;
-        private static final int R_ERR = 3;
-        private static final int R_ALWAYS = 4;
+        // 判定结果码
+        private static final int R_HIDE = 0;     // 隐藏放行（原生 show=false，含 RikkaHub 总开关关）
+        private static final int R_SHOW = 1;     // 显示放行（通过判定 / 窗口内保持 / 首帧建档）
+        private static final int R_SUPPRESS = 2; // 抑制轻滑（不足位移门槛）
+        private static final int R_ERR = 3;      // 异常兜底
+        private static final int R_ALWAYS = 4;   // 常驻模式显示
 
         private static String resultName(int r) {
             switch (r) {
@@ -483,14 +483,14 @@ public class MainHook extends XposedModule implements HookLogger {
             }
         }
 
-
+        /** 结果翻转才打日志（同一结果持续帧不刷屏） */
         private static void logResult(int result, String detail) {
             if (result == sLastResult) return;
             sLastResult = result;
             Debug.d(TAG, "NavBtn -> " + resultName(result) + (detail == null ? "" : " " + detail));
         }
 
-
+        /** 参数布局自检（一次性）：确认 hook 点 arg0=show / arg3=LazyListState 假设 */
         private static void logParamsOnce(XposedInterface.Chain chain) {
             if (sParamLogged) return;
             sParamLogged = true;
@@ -531,12 +531,12 @@ public class MainHook extends XposedModule implements HookLogger {
             logParamsOnce(chain);
             refreshCfg();
             int mode = sCfgMode;
-            if (mode == 2) return chain.proceed();
+            if (mode == 2) return chain.proceed();              // 原版：零干预（RikkaHub 自身逻辑）
 
             boolean show = chain.getArg(0) instanceof Boolean && (Boolean) chain.getArg(0);
 
-            if (mode == 1) {
-
+            if (mode == 1) {                                     // 常驻（尊重 RikkaHub 总开关）
+                // 开关明确关 → 放行隐藏（原生 show=false 已含开关）；开/未知 → 常驻强制显示
                 if (Boolean.FALSE.equals(sShowMessageJumper)) {
                     logResult(R_HIDE, "常驻但 RikkaHub 开关已关");
                     return chain.proceed();
@@ -544,21 +544,21 @@ public class MainHook extends XposedModule implements HookLogger {
                 logResult(R_ALWAYS, null);
                 return chain.proceed(withShow(chain, true));
             }
-
-            if (!show) {
+            // mode == 0 智能（滚动降灵敏，默认）
+            if (!show) {                                         // 原生隐藏（含 RikkaHub 总开关关）→ 放行
                 logResult(R_HIDE, null);
                 return chain.proceed();
             }
 
             Object state = chain.getArg(3);
-            if (state == null) {
+            if (state == null) {                                 // 保险
                 logResult(R_ERR, "state=null");
                 return chain.proceed();
             }
             try {
                 ensureMethods(state.getClass());
 
-
+                // 换会话/页面（state 实例变化）→ 重置基准与窗口，防跨会话串扰
                 Object prev = sLastState == null ? null : sLastState.get();
                 if (prev != state) {
                     sLastState = new WeakReference<Object>(state);
@@ -572,27 +572,27 @@ public class MainHook extends XposedModule implements HookLogger {
                 long now = System.currentTimeMillis();
                 int thresh = Math.max(THRESHOLD_MIN, Math.min(THRESHOLD_MAX, sCfgThresh));
 
-
+                // 显示窗口内（距上次放行 ≤ WINDOW_MS）：连续滚动 → 保持显示，不闪断
                 if (sLastShowMs != 0 && (now - sLastShowMs) <= WINDOW_MS) {
                     sBaseIndex = idx; sBaseOffset = off;
                     logResult(R_SHOW, "窗口内保持 idx=" + idx);
                     return chain.proceed(withShow(chain, true));
                 }
 
-                if (sBaseIndex == Integer.MIN_VALUE) {
+                if (sBaseIndex == Integer.MIN_VALUE) {           // 首帧无基准：放行建档
                     sBaseIndex = idx; sBaseOffset = off; sLastShowMs = now;
                     logResult(R_SHOW, "首帧建档 idx=" + idx);
                     return chain.proceed(withShow(chain, true));
                 }
 
-
-
+                // 窗口外：位移门槛判定（不足门槛 = 轻滑/惯性尾段 → 抑制）
+                // 阈值 = 滑过 ≥N 条（无级用户设）；同条内大滑动(≥N*160px)也视为跨 N 条
                 int idxDelta = Math.abs(idx - sBaseIndex);
                 int offDelta = Math.abs(off - sBaseOffset);
                 boolean distOk = idxDelta >= thresh
                     || (idxDelta == 0 && offDelta >= thresh * 160);
                 if (!distOk) {
-                    sBaseIndex = idx; sBaseOffset = off;
+                    sBaseIndex = idx; sBaseOffset = off;         // 抑制也更新基准：防连续轻滑累计
                     logResult(R_SUPPRESS, "idxΔ=" + idxDelta
                         + " offΔ=" + offDelta + " thr=≥" + thresh + "条");
                     return chain.proceed(withShow(chain, false));
@@ -602,11 +602,11 @@ public class MainHook extends XposedModule implements HookLogger {
                 return chain.proceed(withShow(chain, true));
             } catch (Throwable e) {
                 logResult(R_ERR, String.valueOf(e));
-                return chain.proceed();
+                return chain.proceed();                          // 异常兜底放行，不破坏 UI
             }
         }
 
-
+        /** 仅替换 arg0(show)，其余原样 → 构造全量参数组 */
         private static Object[] withShow(XposedInterface.Chain chain, boolean show) {
             List<Object> args = new ArrayList<>(chain.getArgs());
             args.set(0, Boolean.valueOf(show));
@@ -614,14 +614,14 @@ public class MainHook extends XposedModule implements HookLogger {
         }
     }
 
-
-
-
-
-
-
-
-
+    /**
+     * ⑧ RikkaHub「消息导航按钮」开关 getter 缓存 hooker。
+     * <p>
+     * hook 点: DisplaySetting#getShowMessageJumper()（返回 boolean，未混淆）。
+     * ChatList 重组计算 show 时会先调用它（读 settings.displaySetting.showMessageJumper，
+     * smali line 187），早于 MessageJumper 调用 → NavButtonsHooker 常驻模式可拿到开关真值：
+     * 开关明确关 → 常驻也不显示（尊重 RikkaHub 总开关）。本 hooker 不改返回值，仅缓存。
+     */
     static class ShowMessageJumperHooker implements XposedInterface.Hooker {
         @Override public Object intercept(XposedInterface.Chain chain) throws Throwable {
             Object r = chain.proceed();
