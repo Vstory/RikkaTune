@@ -1,5 +1,12 @@
 # RikkaTune
 
+> [!IMPORTANT]
+> **本项目已停止维护，仓库已归档。**
+>
+> 我们已经切换到 [Kelivo](https://github.com/Chevey339/kelivo) 等其他客户端，不再使用 RikkaHub，这个模块也就没有继续维护的必要了。
+>
+> 如果你仍需要这些增强功能，欢迎 Fork 后自行开发维护。
+
 RikkaHub 增强模块（LSPosed / Xposed）。
 
 针对 [RikkaHub](https://github.com/rikkahub/rikkahub)（Android 开源 AI 聊天客户端）的功能增强与体验优化。
