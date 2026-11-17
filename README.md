@@ -1,6 +1,13 @@
 # RikkaTune
 
-RikkaHub 增强模块（LSPosed / Xposed）。
+> [!IMPORTANT]
+> **本项目已停止维护，仓库已归档。**
+>
+> 我们已经切换到 [Kelivo](https://github.com/Chevey339/kelivo) 等其他客户端，不再使用 RikkaHub，这个模块也就没有继续维护的必要了。
+>
+> 如果你仍需要这些增强功能，欢迎 Fork 后自行开发维护。
+
+RikkaHub 增强模块（LSPosed / Xposed）（smali 旧版分支）。
 
 ## 功能
 
@@ -17,5 +24,3 @@ RikkaHub 增强模块（LSPosed / Xposed）。
 ## 许可证
 
 本项目采用 **GNU AGPL-3.0** 许可证，与 RikkaHub 保持一致。详见 [LICENSE](LICENSE)。
-
-> 更多功能增强与界面调整正在开发中。
